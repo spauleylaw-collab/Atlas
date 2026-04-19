@@ -1,0 +1,1685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Mono:wght@400;500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<style>
+/* ── Reset & base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: #070b10; overflow: hidden; }
+body { font-family: 'Jost', system-ui, sans-serif; }
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(50px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInFull {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes recordPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,60,60,0.6); }
+  50%       { box-shadow: 0 0 0 8px rgba(220,60,60,0); }
+}
+@keyframes recordDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.88); }
+}
+
+/* ── Scrollbar hide ── */
+.a-scroll::-webkit-scrollbar { width: 0; }
+.a-scroll { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+
+/* ── Card stagger ── */
+.a-card { animation: fadeUp 0.42s ease both; }
+.a-card:nth-child(1) { animation-delay: 0.03s; }
+.a-card:nth-child(2) { animation-delay: 0.07s; }
+.a-card:nth-child(3) { animation-delay: 0.11s; }
+.a-card:nth-child(4) { animation-delay: 0.15s; }
+.a-card:nth-child(5) { animation-delay: 0.19s; }
+.a-card:nth-child(6) { animation-delay: 0.23s; }
+.a-card:nth-child(7) { animation-delay: 0.27s; }
+
+/* ── Compass ── */
+.a-compass { animation: spinSlow 60s linear infinite; }
+
+/* ── Hover states ── */
+.a-add-btn:hover   { background: rgba(212,175,55,0.12) !important; border-color: rgba(212,175,55,0.5) !important; }
+.a-nav-btn:hover   { color: #d4af37 !important; }
+.a-primary:hover   { background: #c9a227 !important; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(212,175,55,0.3) !important; }
+.a-secondary:hover { background: rgba(212,175,55,0.08) !important; border-color: rgba(212,175,55,0.35) !important; }
+.a-titem:hover     { border-color: rgba(212,175,55,0.22) !important; }
+.a-pill:hover      { background: rgba(212,175,55,0.1) !important; border-color: rgba(212,175,55,0.35) !important; }
+.a-del:hover       { color: #e05555 !important; border-color: rgba(220,80,80,0.35) !important; background: rgba(220,80,80,0.08) !important; }
+
+/* ── Inputs ── */
+.a-textarea {
+  width: 100%; background: transparent; border: none; outline: none;
+  resize: none; color: #e8e0d0;
+  font-family: 'Jost', system-ui, sans-serif;
+  font-size: 16px; font-weight: 400; line-height: 1.7;
+  caret-color: #d4af37;
+}
+.a-textarea::placeholder { color: rgba(138,154,184,0.4); }
+.a-input {
+  width: 100%; background: transparent; border: none; outline: none;
+  color: #e8e0d0;
+  font-family: 'Jost', system-ui, sans-serif;
+  font-size: 16px; font-weight: 400; line-height: 1.7;
+  caret-color: #d4af37;
+}
+.a-input::placeholder { color: rgba(138,154,184,0.4); }
+
+/* ── Log button ── */
+.a-log-btn { transition: all 0.2s; }
+.a-log-btn:hover:not(:disabled) {
+  background: #c9a227 !important; transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(212,175,55,0.3);
+}
+.a-log-btn:disabled { opacity: 0.35; cursor: not-allowed !important; }
+
+/* ── Entry input full-screen ── */
+.a-entry-screen { animation: slideInFull 0.32s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* ── Voice recording ── */
+.a-mic-btn {
+  transition: all 0.2s;
+}
+.a-mic-btn:hover:not(.recording) {
+  background: rgba(212,175,55,0.15) !important;
+  border-color: rgba(212,175,55,0.45) !important;
+}
+.a-mic-btn.recording {
+  animation: recordPulse 1.4s ease-out infinite;
+  background: rgba(220,60,60,0.15) !important;
+  border-color: rgba(220,60,60,0.5) !important;
+}
+.a-mic-btn.recording .a-mic-dot {
+  animation: recordDot 1s ease-in-out infinite;
+}
+
+/* ── Photo attach ── */
+.a-photo-btn {
+  transition: all 0.2s;
+}
+.a-photo-btn:hover {
+  background: rgba(212,175,55,0.15) !important;
+  border-color: rgba(212,175,55,0.45) !important;
+}
+.a-photo-thumb {
+  transition: transform 0.2s;
+}
+.a-photo-thumb:hover { transform: scale(1.02); }
+
+/* ── Quick capture FAB ── */
+.a-fab {
+  transition: all 0.2s;
+}
+.a-fab:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 28px rgba(212,175,55,0.4) !important;
+}
+
+/* ── Type picker sheet ── */
+.a-sheet { animation: slideUp 0.28s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* ── Input field focus glow ── */
+.a-field:focus-within { border-color: rgba(212,175,55,0.38) !important; }
+
+/* ── Shell: fills viewport on mobile, phone-frame on desktop ── */
+#shell {
+  position: fixed; inset: 0;
+  background: #0d1117;
+  overflow: hidden;
+}
+@media (min-width: 500px) {
+  body { background: #070b10; overflow: auto; }
+  html, body { height: auto; }
+  #shell {
+    position: relative;
+    width: 390px; height: 820px;
+    margin: 40px auto;
+    border-radius: 28px;
+    box-shadow: 0 0 0 1px rgba(212,175,55,0.14), 0 40px 80px rgba(0,0,0,0.75);
+    overflow: hidden;
+  }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+'use strict';
+const { createElement: h, useState, useMemo, useRef, useEffect, Fragment } = React;
+
+/* ── Design tokens ── */
+const C = {
+  bg:       '#0d1117', surface:  '#131920', card: '#161e28',
+  border:   'rgba(255,255,255,0.07)', borderG: 'rgba(212,175,55,0.18)',
+  gold:     '#d4af37', goldDim: '#9a7c20', goldSoft: 'rgba(212,175,55,0.13)',
+  text:     '#e8e0d0', textMid: '#8a9ab8', textDim: '#4a5568', navy: '#1a2a42',
+};
+const F = {
+  serif: "'Playfair Display', Georgia, serif",
+  mono:  "'DM Mono', 'Courier New', monospace",
+  body:  "'Jost', system-ui, sans-serif",
+};
+
+/* ── Entry types ── */
+const ET = {
+  note: {
+    glyph: '✦', label: 'Note', sub: 'A thought or observation',
+    prompt: "What's on your mind?", hint: 'Write freely. This is just for you.',
+    fields: [{ key: 'body', label: 'Note', multiline: true, placeholder: 'A thought, observation, or anything worth keeping...' }],
+  },
+  meal: {
+    glyph: '◈', label: 'Meal', sub: 'Something you ate or drank',
+    prompt: 'What did you eat or drink?', hint: 'Keep it simple — a few words is enough.',
+    fields: [
+      { key: 'body',    label: 'What',           multiline: false, placeholder: 'e.g. oatmeal and coffee, leftover pasta...' },
+      { key: 'context', label: 'Where / with whom', multiline: false, placeholder: 'e.g. at home, at the desk, with Maya...' },
+    ],
+  },
+  workout: {
+    glyph: '⊕', label: 'Movement', sub: 'Exercise, walk, or activity',
+    prompt: 'What did you do?', hint: 'Any movement counts — big or small.',
+    fields: [
+      { key: 'body',    label: 'Activity',   multiline: false, placeholder: 'e.g. 30 min run, yoga, walked to the market...' },
+      { key: 'context', label: 'How it felt', multiline: false, placeholder: 'e.g. slow and hard, surprisingly good...' },
+    ],
+  },
+  photo: {
+    glyph: '◉', label: 'Photo', sub: 'A picture or visual memory',
+    prompt: 'What did you see or capture?', hint: 'Describe the image or memory in words.',
+    fields: [{ key: 'body', label: 'Description', multiline: true, placeholder: 'What it looked like, where it was, why it mattered...' }],
+  },
+  place: {
+    glyph: '◎', label: 'Place', sub: 'Somewhere you were',
+    prompt: 'Where were you?', hint: 'Name the place and what brought you there.',
+    fields: [
+      { key: 'body',    label: 'Place name',         multiline: false, placeholder: 'e.g. the coffee shop on Rue de Bretagne...' },
+      { key: 'context', label: 'Why or what happened', multiline: false, placeholder: 'e.g. first time here, worked all morning...' },
+    ],
+  },
+};
+
+/* ── localStorage helpers ── */
+const STORAGE_KEY = 'atlas_entries_v1';
+function loadEntries() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { return []; }
+}
+function saveEntries(entries) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); } catch {}
+}
+
+/* ── Formatting ── */
+function fmtTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+function fmtDate(iso) {
+  const d = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  const sameDay = (a, b) => a.toDateString() === b.toDateString();
+  if (sameDay(d, today)) return 'Today';
+  if (sameDay(d, yesterday)) return 'Yesterday';
+  return d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+}
+function fmtDateTime(iso) {
+  return fmtDate(iso) + ' · ' + fmtTime(iso);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PATTERN ENGINE v2
+   ───────────────────────────────────────────────────────────────────────────
+   The old engine returned template strings based on entry counts. This one
+   analyzes actual text, time-of-day, week-over-week shifts, gaps, and named
+   references, then surfaces the single most interesting (and honest) signal.
+
+   Flow:
+     computeSignals(entries) → { insights: [...], stats: {...} }
+     Each insight: { id, strength, title, body, kind, evidence }
+     getPatternInsight(entries) picks the strongest insight.
+     getSuggestion(entries, insight) is specific to that insight.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Tiny stopword list so we can find "content" words that might matter
+const STOPWORDS = new Set([
+  'the','a','an','and','or','but','if','then','for','of','to','in','on','at',
+  'by','with','from','as','is','was','were','be','been','being','am','are',
+  'i','me','my','we','us','our','you','your','he','she','it','they','them',
+  'this','that','these','those','so','just','not','no','yes','too','very',
+  'really','some','any','all','more','most','one','two','had','have','has',
+  'did','do','does','will','would','could','should','can','about','up','down',
+  'out','over','into','than','there','here','also','only','again'
+]);
+
+function tokens(text) {
+  if (!text) return [];
+  return text.toLowerCase()
+    .replace(/[^\w\s']/g, ' ')
+    .split(/\s+/)
+    .filter(w => w && w.length > 1 && !STOPWORDS.has(w));
+}
+
+function allText(entry) {
+  return [entry.body, entry.context].filter(Boolean).join(' ');
+}
+
+function daysBetween(a, b) {
+  return Math.round((new Date(a) - new Date(b)) / DAY_MS);
+}
+
+function startOfDay(d) {
+  const x = new Date(d);
+  x.setHours(0,0,0,0);
+  return x;
+}
+
+/* ── Core signal extraction ─────────────────────────────────────────────── */
+function computeSignals(entries) {
+  const signals = [];
+  const now = new Date();
+
+  // ── Basic stats
+  const total     = entries.length;
+  const recent14  = entries.filter(e => (now - new Date(e.createdAt)) < 14 * DAY_MS);
+  const recent7   = entries.filter(e => (now - new Date(e.createdAt)) < 7  * DAY_MS);
+  const prev7     = entries.filter(e => {
+    const age = now - new Date(e.createdAt);
+    return age >= 7 * DAY_MS && age < 14 * DAY_MS;
+  });
+
+  // Earliest entry determines whether we have enough history
+  const firstEntry = entries[entries.length - 1];
+  const daysOfHistory = firstEntry
+    ? Math.max(1, Math.ceil((now - new Date(firstEntry.createdAt)) / DAY_MS))
+    : 0;
+
+  const stats = {
+    total, daysOfHistory,
+    last7: recent7.length, prev7: prev7.length,
+  };
+
+  if (total < 3) {
+    signals.push({
+      id: 'too-soon', strength: 100, kind: 'wait',
+      title: 'A course is being plotted',
+      body: 'Not enough logged yet. Keep going — Atlas is beginning to see the outline of your days.',
+    });
+    return { signals, stats };
+  }
+
+  // ── Signal 1: Type dominance in recent 14
+  const typeCount = { note:0, meal:0, workout:0, photo:0, place:0 };
+  recent14.forEach(e => { if (typeCount[e.type] !== undefined) typeCount[e.type]++; });
+  const typesUsed = Object.values(typeCount).filter(v => v > 0).length;
+  const topType   = Object.entries(typeCount).sort((a,b) => b[1] - a[1])[0];
+  const topPct    = recent14.length > 0 ? topType[1] / recent14.length : 0;
+
+  if (typesUsed <= 1 && recent14.length >= 4) {
+    signals.push({
+      id: 'mono-type', strength: 85, kind: 'narrowing',
+      title: 'Only one kind of moment lately',
+      body: 'In your last ' + recent14.length + ' entries, all of them are ' +
+            ET[topType[0]].label.toLowerCase() + '. The rest of your day is either going unlogged — or going unnoticed.',
+      evidence: { type: topType[0], count: topType[1] },
+    });
+  } else if (topPct >= 0.7 && recent14.length >= 5) {
+    signals.push({
+      id: 'heavy-tilt', strength: 70, kind: 'narrowing',
+      title: ET[topType[0]].label + ' is dominating the map',
+      body: Math.round(topPct * 100) + '% of your recent entries are ' +
+            ET[topType[0]].label.toLowerCase() + '. Repetition can be focus, or it can be a quieter kind of narrowing.',
+      evidence: { type: topType[0], pct: topPct },
+    });
+  }
+
+  // ── Signal 2: Same-type streak at the very top of the feed
+  let streak = 1;
+  for (let i = 1; i < Math.min(entries.length, 10); i++) {
+    if (entries[i].type === entries[0].type) streak++; else break;
+  }
+  if (streak >= 4) {
+    signals.push({
+      id: 'streak', strength: 75, kind: 'narrowing',
+      title: 'Same thing, ' + streak + ' times in a row',
+      body: 'Your last ' + streak + ' entries are all ' +
+            ET[entries[0].type].label.toLowerCase() + '. That can be deep focus — or it can be the moment to log something else on purpose.',
+      evidence: { type: entries[0].type, streak },
+    });
+  }
+
+  // ── Signal 3: Time-of-day concentration
+  const hourBuckets = { morning:0, afternoon:0, evening:0, night:0 };
+  recent14.forEach(e => {
+    const h = new Date(e.createdAt).getHours();
+    if      (h >= 5  && h < 12) hourBuckets.morning++;
+    else if (h >= 12 && h < 17) hourBuckets.afternoon++;
+    else if (h >= 17 && h < 22) hourBuckets.evening++;
+    else                         hourBuckets.night++;
+  });
+  const hourTotal = Object.values(hourBuckets).reduce((a,b) => a+b, 0);
+  const topHour   = Object.entries(hourBuckets).sort((a,b) => b[1] - a[1])[0];
+  const hourPct   = hourTotal > 0 ? topHour[1] / hourTotal : 0;
+  if (hourPct >= 0.75 && hourTotal >= 6) {
+    const bucketLabel = {
+      morning: 'mornings', afternoon: 'afternoons',
+      evening: 'evenings', night: 'late nights',
+    }[topHour[0]];
+    signals.push({
+      id: 'time-tilt', strength: 55, kind: 'rhythm',
+      title: 'Almost everything happens in ' + bucketLabel,
+      body: Math.round(hourPct * 100) + '% of your entries land in the ' + bucketLabel + '. ' +
+            'That may be real shape, or it may mean the other parts of your day are going undocumented.',
+    });
+  }
+
+  // ── Signal 4: Waypoint drought (no new places lately)
+  const lastPlace = entries.find(e => e.type === 'place');
+  const daysSincePlace = lastPlace ? daysBetween(now, lastPlace.createdAt) : Infinity;
+  if (daysOfHistory >= 4 && daysSincePlace >= 5 && total >= 5) {
+    const msg = lastPlace
+      ? 'You haven\'t marked a new place in ' + daysSincePlace + ' days. The map is still, which can be peaceful — or it can be a sign the usual loop has tightened.'
+      : 'You haven\'t marked a single place yet. Somewhere you\'ve been is part of the shape of a life — is there somewhere worth pinning?';
+    signals.push({
+      id: 'no-places', strength: 65, kind: 'narrowing',
+      title: 'You haven\'t logged a place in a while',
+      body: msg,
+    });
+  }
+
+  // ── Signal 5: No one named in recent entries (isolation signal)
+  const withReferences = recent14.filter(e => {
+    const t = allText(e).toLowerCase();
+    // crude: has "with", or a capitalized word that looks like a name in original case
+    const orig = allText(e);
+    const hasWith = /\bwith\s+[A-Z]/.test(orig);
+    const hasNames = /\b[A-Z][a-z]{2,}\b/.test(orig.replace(/^./, s => s.toLowerCase()));
+    return hasWith || hasNames;
+  });
+  if (recent14.length >= 6 && withReferences.length === 0) {
+    signals.push({
+      id: 'no-names', strength: 60, kind: 'narrowing',
+      title: 'No one else shows up in your recent entries',
+      body: 'Across ' + recent14.length + ' entries, there are no names and no mentions of being with someone. The log is solo. That might be a quiet stretch — or a sign worth noticing.',
+    });
+  }
+
+  // ── Signal 6: Recurring content words (the stuff you keep writing about)
+  const allWords = recent14.flatMap(e => tokens(allText(e)));
+  const wordCount = {};
+  allWords.forEach(w => { wordCount[w] = (wordCount[w] || 0) + 1; });
+  const topWords = Object.entries(wordCount)
+    .filter(([_, c]) => c >= 3)
+    .sort((a,b) => b[1] - a[1])
+    .slice(0, 3);
+  if (topWords.length >= 1 && recent14.length >= 6) {
+    const [word, count] = topWords[0];
+    signals.push({
+      id: 'recurring-word', strength: 45, kind: 'awareness',
+      title: '"' + word + '" keeps coming up',
+      body: 'It appears ' + count + ' times across your recent entries. That kind of repetition is usually telling you something — worth pressing on gently.',
+      evidence: { word, count },
+    });
+  }
+
+  // ── Signal 7: Volume shift week over week
+  if (daysOfHistory >= 10) {
+    if (recent7.length === 0 && prev7.length >= 3) {
+      signals.push({
+        id: 'dropped-off', strength: 90, kind: 'awareness',
+        title: 'You\'ve gone quiet this week',
+        body: 'Zero entries in the last 7 days, after ' + prev7.length + ' the week before. Either life is moving faster than the log can catch, or something has shifted.',
+      });
+    } else if (recent7.length >= 3 && prev7.length >= 3) {
+      const delta = recent7.length - prev7.length;
+      if (Math.abs(delta) >= 4) {
+        signals.push({
+          id: 'volume-shift', strength: 50, kind: 'rhythm',
+          title: delta > 0 ? 'The tempo has picked up' : 'The tempo has slowed',
+          body: delta > 0
+            ? 'You logged ' + recent7.length + ' things this week vs ' + prev7.length + ' last week. Something is picking up momentum — worth naming what.'
+            : 'You logged ' + recent7.length + ' things this week vs ' + prev7.length + ' last week. That kind of slowdown can be rest, or it can be drift — only you know which.',
+        });
+      }
+    }
+  }
+
+  // ── Signal 8: Healthy variety (positive signal)
+  const daysActive = new Set(
+    recent14.map(e => startOfDay(e.createdAt).getTime())
+  ).size;
+  if (typesUsed >= 4 && daysActive >= 4 && !signals.some(s => s.kind === 'narrowing')) {
+    signals.push({
+      id: 'broad-range', strength: 40, kind: 'positive',
+      title: 'The map shows real range',
+      body: typesUsed + ' kinds of moments across ' + daysActive + ' different days. There is real texture in what you are building.',
+    });
+  }
+
+  // ── Signal 9: Weekend/weekday split
+  if (recent14.length >= 7) {
+    const weekdays = recent14.filter(e => {
+      const d = new Date(e.createdAt).getDay();
+      return d >= 1 && d <= 5;
+    }).length;
+    const weekends = recent14.length - weekdays;
+    // Expected ratio is 5:2, so 71% weekday / 29% weekend
+    const weekdayPct = weekdays / recent14.length;
+    if (weekdayPct >= 0.92 && weekends <= 1) {
+      signals.push({
+        id: 'no-weekend', strength: 55, kind: 'narrowing',
+        title: 'Weekends are going unwritten',
+        body: 'Almost all your recent entries are from weekdays. Something about the weekend shape is escaping the log — either it\'s restful enough not to record, or it\'s too empty to.',
+      });
+    }
+  }
+
+  // ── Default fallback if nothing fires
+  if (signals.length === 0) {
+    signals.push({
+      id: 'shape-forming', strength: 20, kind: 'neutral',
+      title: 'A shape is forming',
+      body: 'The pattern is still settling. Atlas is beginning to see how your days lay out, but nothing is loud enough yet to call.',
+    });
+  }
+
+  return { signals, stats };
+}
+
+/* ── Headline insight (primary voice on Home) ───────────────────────────── */
+function getPatternInsight(entries) {
+  if (!entries.length) return {
+    id: 'empty',
+    title: 'No pattern charted yet',
+    body: 'Once you begin logging moments, Atlas will start mapping the shape of your days and noticing where paths may be narrowing.',
+    kind: 'empty',
+  };
+  const { signals } = computeSignals(entries);
+  // Sort by strength and return the headline
+  signals.sort((a, b) => b.strength - a.strength);
+  return signals[0];
+}
+
+/* ── Suggestion keyed to the specific signal ────────────────────────────── */
+function getSuggestion(entries, insight) {
+  if (!entries.length || insight.kind === 'empty') return {
+    category: 'Begin', title: 'Start by noticing your real life',
+    body: 'Add a few moments first. Atlas works best when it can read enough of your rhythm to suggest a new opening.',
+    footer: 'Awareness comes before possibility.',
+  };
+
+  // Map signal id → tailored suggestion
+  const byId = {
+    'too-soon': {
+      category: 'Continue', title: 'Keep logging for a few more days',
+      body: 'Atlas needs a little more texture to say anything useful. Three more entries and the shape starts to show.',
+      footer: 'The map needs a few pins before it tells you anything.',
+    },
+    'mono-type': {
+      category: 'Widen', title: 'Log something in a different lane',
+      body: 'You\'ve been capturing only one kind of moment. Pick any other type today — a place, a meal, a note — and see what the rest of your day actually looks like.',
+      footer: 'One new lane is enough to shift the shape.',
+    },
+    'heavy-tilt': {
+      category: 'Widen', title: 'Break the pattern, even briefly',
+      body: 'The log is heavily weighted toward one kind of thing. Try one different type of entry today — not to balance for its own sake, but to see what you\'ve stopped noticing.',
+      footer: 'The shape of attention becomes the shape of life.',
+    },
+    'streak': {
+      category: 'Widen', title: 'Log something off the streak',
+      body: 'Same type ' + (insight.evidence?.streak || 'several') + ' times in a row. Pick any other entry type next time — even if the moment feels small.',
+      footer: 'The point isn\'t balance. It\'s range.',
+    },
+    'time-tilt': {
+      category: 'Shift', title: 'Log at a different hour today',
+      body: 'Try capturing a moment outside your usual window. What\'s happening in the hours you keep skipping?',
+      footer: 'The hours you don\'t log are still your life.',
+    },
+    'no-places': {
+      category: 'Outside', title: 'Put a new pin on the map today',
+      body: 'Go somewhere you haven\'t been recently — a new coffee shop, a park, a walk down a different street. Log it.',
+      footer: 'A life widens one new place at a time.',
+    },
+    'no-names': {
+      category: 'Connect', title: 'Reach out to one person today',
+      body: 'The log has gone solo. Pick someone — a text, a call, anything real. Then log the moment.',
+      footer: 'Contact is what keeps the map alive.',
+    },
+    'recurring-word': {
+      category: 'Notice', title: 'Write one entry about "' + (insight.evidence?.word || 'this') + '" directly',
+      body: 'That word keeps surfacing. Instead of logging around it, log into it — what is it actually, and why is it circling?',
+      footer: 'The thing that repeats is usually the thing asking to be looked at.',
+    },
+    'dropped-off': {
+      category: 'Return', title: 'Log one small thing, just to come back',
+      body: 'Whatever happened this week, start with one small entry. The point isn\'t catching up. It\'s showing up again.',
+      footer: 'The log forgives. It just needs one pin.',
+    },
+    'volume-shift': insight.body && insight.body.includes('picking up')
+      ? { category: 'Anchor', title: 'Name what\'s driving this week',
+          body: 'The tempo has changed. Before it passes, log one note that captures why — so you can recognize this kind of week again.',
+          footer: 'Momentum is easier to understand when it\'s named.' }
+      : { category: 'Reset', title: 'Let the slower week be what it is',
+          body: 'Rest, drift, something else — whatever this week is, try one entry that just names it honestly.',
+          footer: 'Not every week needs to be loud.' },
+    'no-weekend': {
+      category: 'Outside', title: 'Make one weekend moment count',
+      body: 'The weekends aren\'t reaching the log. Capture one thing this weekend — even something quiet.',
+      footer: 'Unwritten days eventually feel like missing days.',
+    },
+    'broad-range': {
+      category: 'Continue', title: 'Keep capturing the full shape',
+      body: 'The range is real and it\'s showing. Keep noticing — this is what it looks like when a life has room in it.',
+      footer: 'Don\'t optimize the shape. Just keep seeing it.',
+    },
+    'shape-forming': {
+      category: 'Observe', title: 'Watch what starts repeating',
+      body: 'Nothing strong is calling yet. Over the next few days, notice which moments feel automatic — those are the ones worth logging.',
+      footer: 'Awareness comes before intervention.',
+    },
+  };
+
+  return byId[insight.id] || byId['shape-forming'];
+}
+
+/* ── SVG Compass Rose ── */
+function CompassRose({ size }) {
+  size = size || 150;
+  const cx = size / 2, r = size / 2 - 2;
+  const pt = (x, y) => x + ',' + y;
+  const lines = [0,30,60,90,120,150].map(a =>
+    h('line', { key: a, x1: cx, y1: cx,
+      x2: cx + r * Math.cos(a * Math.PI / 180),
+      y2: cx + r * Math.sin(a * Math.PI / 180),
+      stroke: '#d4af37', strokeWidth: '0.4', opacity: '0.5' })
+  );
+  return h('svg', { width: size, height: size, viewBox: '0 0 ' + size + ' ' + size,
+    fill: 'none', xmlns: 'http://www.w3.org/2000/svg',
+    className: 'a-compass', style: { opacity: 0.07 } },
+    h('circle', { cx, cy: cx, r, stroke: '#d4af37', strokeWidth: '0.8' }),
+    h('circle', { cx, cy: cx, r: r * 0.75, stroke: '#d4af37', strokeWidth: '0.4' }),
+    h('circle', { cx, cy: cx, r: r * 0.5,  stroke: '#d4af37', strokeWidth: '0.4' }),
+    ...lines,
+    h('polygon', { points: [pt(cx,cx-r+2),pt(cx+5,cx-8),pt(cx,cx-14),pt(cx-5,cx-8)].join(' '), fill: '#d4af37' }),
+    h('polygon', { points: [pt(cx,cx+r-2),pt(cx-4,cx+8),pt(cx,cx+14),pt(cx+4,cx+8)].join(' '), fill: '#d4af37', opacity: '0.5' }),
+    h('circle', { cx, cy: cx, r: 5, fill: '#d4af37' }),
+    h('circle', { cx, cy: cx, r: 2, fill: '#0d1117' }),
+    h('text', { x: cx, y: cx - r + 13, textAnchor: 'middle',
+      fill: '#d4af37', fontSize: '9', fontFamily: 'Playfair Display', fontWeight: '700' }, 'N')
+  );
+}
+
+/* ── Map grid overlay ── */
+function MapGrid() {
+  const hLines = ['25%','50%','75%'].map(t =>
+    h('div', { key: 'h'+t, style: { position:'absolute',left:0,right:0,top:t,borderTop:'1px solid rgba(212,175,55,0.04)' } })
+  );
+  const vLines = ['33%','66%'].map(l =>
+    h('div', { key: 'v'+l, style: { position:'absolute',top:0,bottom:0,left:l,borderLeft:'1px solid rgba(212,175,55,0.04)' } })
+  );
+  const corners = [
+    { top:0,left:0,   borderTop:'1px solid rgba(212,175,55,0.22)',    borderLeft:'1px solid rgba(212,175,55,0.22)' },
+    { top:0,right:0,  borderTop:'1px solid rgba(212,175,55,0.22)',    borderRight:'1px solid rgba(212,175,55,0.22)' },
+    { bottom:0,left:0,  borderBottom:'1px solid rgba(212,175,55,0.22)', borderLeft:'1px solid rgba(212,175,55,0.22)' },
+    { bottom:0,right:0, borderBottom:'1px solid rgba(212,175,55,0.22)', borderRight:'1px solid rgba(212,175,55,0.22)' },
+  ].map((c,i) => h('div', { key:'c'+i, style:{ position:'absolute',width:12,height:12,...c } }));
+  return h('div', { style:{ position:'absolute',inset:0,pointerEvents:'none',zIndex:0 } }, ...hLines, ...vLines, ...corners);
+}
+
+/* ── Shared UI primitives ── */
+function MonoLabel({ children, style }) {
+  return h('div', { style: { fontFamily: F.mono, fontSize: 10, fontWeight: 500,
+    letterSpacing: '0.18em', textTransform: 'uppercase', color: C.goldDim, ...style } }, children);
+}
+function Card({ children, style }) {
+  return h('div', { className: 'a-card', style: { marginTop: 14, ...style } }, children);
+}
+function GlyphBadge({ glyph, size }) {
+  size = size || 34;
+  return h('div', { style: { width: size, height: size, borderRadius: 9, flexShrink: 0,
+    background: C.goldSoft, border: '1px solid ' + C.borderG,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: size * 0.44, color: C.gold } }, glyph);
+}
+function ScreenHeader({ title, subtitle }) {
+  return h('div', { style: { position:'relative', padding:'28px 22px 20px', overflow:'hidden',
+    background:'linear-gradient(180deg,'+C.navy+' 0%,'+C.bg+' 100%)',
+    borderBottom:'1px solid '+C.border } },
+    h(MapGrid),
+    h('div', { style:{ position:'absolute',top:-30,right:-30,zIndex:0 } }, h(CompassRose,{size:150})),
+    h('div', { style:{ position:'relative',zIndex:1 } },
+      h('div', { style:{ fontFamily:F.serif,fontSize:28,fontWeight:900,color:C.text,marginBottom:4 } }, title),
+      subtitle && h(MonoLabel, null, subtitle)
+    )
+  );
+}
+
+/* ── Entry Input Screen (Step 2) ── */
+/* ── Voice dictation hook ── */
+function useVoiceDictation({ onTranscript }) {
+  const [listening, setListening] = useState(false);
+  const [supported, setSupported] = useState(true);
+  const [error, setError] = useState(null);
+  const recognitionRef = useRef(null);
+  const baseTextRef    = useRef('');  // text before recording started
+  const onTranscriptRef = useRef(onTranscript);
+  onTranscriptRef.current = onTranscript;
+
+  useEffect(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { setSupported(false); return; }
+    const r = new SR();
+    r.continuous = true;
+    r.interimResults = true;
+    r.lang = navigator.language || 'en-US';
+
+    r.onresult = (event) => {
+      let finalText = '', interimText = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const res = event.results[i];
+        if (res.isFinal) finalText += res[0].transcript;
+        else interimText += res[0].transcript;
+      }
+      const combined = baseTextRef.current
+        + (finalText ? (baseTextRef.current && !baseTextRef.current.endsWith(' ') ? ' ' : '') + finalText : '')
+        + (interimText ? (baseTextRef.current || finalText ? ' ' : '') + interimText : '');
+      onTranscriptRef.current(combined);
+      if (finalText) {
+        baseTextRef.current = baseTextRef.current
+          + (baseTextRef.current && !baseTextRef.current.endsWith(' ') ? ' ' : '') + finalText.trim();
+      }
+    };
+    r.onerror = (e) => {
+      setError(e.error || 'error');
+      setListening(false);
+    };
+    r.onend = () => setListening(false);
+    recognitionRef.current = r;
+    return () => { try { r.stop(); } catch {} };
+  }, []);
+
+  function start(currentText) {
+    if (!recognitionRef.current) return;
+    baseTextRef.current = (currentText || '').trim();
+    setError(null);
+    try {
+      recognitionRef.current.start();
+      setListening(true);
+    } catch (e) {
+      setError('already-started');
+    }
+  }
+  function stop() {
+    if (!recognitionRef.current) return;
+    try { recognitionRef.current.stop(); } catch {}
+    setListening(false);
+  }
+  function toggle(currentText) {
+    if (listening) stop();
+    else start(currentText);
+  }
+
+  return { listening, supported, error, start, stop, toggle };
+}
+
+/* ── Photo helpers ── */
+function resizeImage(file, maxSide) {
+  maxSide = maxSide || 1000;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxSide || height > maxSide) {
+          if (width > height) {
+            height = Math.round(height * (maxSide / width));
+            width = maxSide;
+          } else {
+            width = Math.round(width * (maxSide / height));
+            height = maxSide;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ── Entry Input Screen (Step 2) with voice + photo ── */
+function EntryInputScreen({ type, onSave, onBack, initialPhoto }) {
+  const meta = ET[type];
+  const init = {};
+  meta.fields.forEach(f => { init[f.key] = ''; });
+  const [vals, setVals] = useState(init);
+  const [photos, setPhotos] = useState(initialPhoto ? [initialPhoto] : []);
+  const [activeField, setActiveField] = useState(meta.fields[0].key);
+  const fieldRefs = useRef({});
+  const fileInputRef = useRef(null);
+
+  const primaryVal = vals[meta.fields[0].key] || '';
+  const canSave = primaryVal.trim().length > 0 || photos.length > 0;
+
+  const voice = useVoiceDictation({
+    onTranscript: (text) => {
+      setVals(v => ({ ...v, [activeField]: text }));
+    },
+  });
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const ref = fieldRefs.current[meta.fields[0].key];
+      if (ref) ref.focus();
+    }, 340);
+    return () => clearTimeout(t);
+  }, []);
+
+  function handleSave() {
+    if (!canSave) return;
+    voice.stop();
+    onSave(type, vals, photos);
+  }
+
+  function handleMicTap() {
+    voice.toggle(vals[activeField] || '');
+  }
+
+  function handlePhotoTap() {
+    fileInputRef.current && fileInputRef.current.click();
+  }
+
+  async function handleFiles(e) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = ''; // allow re-selecting same file
+    for (const f of files) {
+      try {
+        const data = await resizeImage(f, 1000);
+        setPhotos(p => [...p, data]);
+      } catch (err) {
+        console.error('Photo error', err);
+      }
+    }
+  }
+
+  function removePhoto(idx) {
+    setPhotos(p => p.filter((_, i) => i !== idx));
+  }
+
+  const fieldEls = meta.fields.map((field, i) =>
+    h('div', { key: field.key, style: { marginBottom: 18 } },
+      h(MonoLabel, { style: { marginBottom: 10 } }, field.label),
+      h('div', { className: 'a-field', style: { padding:'14px 16px', borderRadius:12,
+        background:'rgba(255,255,255,0.03)', border:'1px solid ' + (activeField === field.key ? C.borderG : C.border),
+        transition:'border-color 0.2s' } },
+        field.multiline
+          ? h('textarea', {
+              ref: el => { fieldRefs.current[field.key] = el; },
+              className: 'a-textarea', rows: 5,
+              placeholder: field.placeholder, value: vals[field.key],
+              onFocus: () => setActiveField(field.key),
+              onChange: e => setVals(v => ({ ...v, [field.key]: e.target.value })) })
+          : h('input', {
+              ref: el => { fieldRefs.current[field.key] = el; },
+              className: 'a-input', type: 'text',
+              placeholder: field.placeholder, value: vals[field.key],
+              onFocus: () => setActiveField(field.key),
+              onChange: e => setVals(v => ({ ...v, [field.key]: e.target.value })) })
+      )
+    )
+  );
+
+  // Photo gallery
+  const photoEls = photos.length > 0 ? h('div', { style: { marginBottom: 18 } },
+    h(MonoLabel, { style: { marginBottom: 10 } }, 'Attached · ' + photos.length),
+    h('div', { style: { display:'flex', gap:8, overflowX:'auto', paddingBottom:4 } },
+      ...photos.map((src, idx) =>
+        h('div', { key: idx, className: 'a-photo-thumb', style: {
+          position:'relative', width:78, height:78, flexShrink:0,
+          borderRadius:10, overflow:'hidden',
+          border:'1px solid ' + C.borderG,
+          background:'rgba(255,255,255,0.03)' } },
+          h('img', { src, alt:'attachment',
+            style:{ width:'100%', height:'100%', objectFit:'cover', display:'block' } }),
+          h('button', { onClick: () => removePhoto(idx),
+            style:{ position:'absolute', top:3, right:3,
+              width:18, height:18, borderRadius:'50%',
+              background:'rgba(0,0,0,0.7)', border:'none', color:'#fff',
+              fontSize:11, cursor:'pointer', display:'flex',
+              alignItems:'center', justifyContent:'center', lineHeight:1, padding:0 } }, '×')
+        )
+      )
+    )
+  ) : null;
+
+  return h('div', { className: 'a-entry-screen', style: { position:'absolute',inset:0,
+    background:C.bg, zIndex:30, display:'flex', flexDirection:'column' } },
+    /* Hidden file input */
+    h('input', { type:'file', accept:'image/*', multiple: true, ref: fileInputRef,
+      onChange: handleFiles, style: { display:'none' } }),
+
+    /* Header */
+    h('div', { style: { position:'relative', padding:'24px 20px 20px', overflow:'hidden',
+      background:'linear-gradient(180deg,'+C.navy+' 0%,'+C.bg+' 100%)',
+      borderBottom:'1px solid '+C.border, flexShrink:0 } },
+      h(MapGrid),
+      h('div', { style:{ position:'relative',zIndex:1 } },
+        h('div', { style:{ display:'flex',alignItems:'center',gap:12,marginBottom:18 } },
+          h('button', { onClick: () => { voice.stop(); onBack(); }, style:{ background:'none',border:'none',
+            color:C.textMid,cursor:'pointer',fontFamily:F.body,fontSize:13,
+            display:'flex',alignItems:'center',gap:6,padding:0 } },
+            h('span', { style:{ fontSize:16,lineHeight:1 } }, '←'),
+            h('span', null, 'Back')
+          ),
+          h('div', { style:{ display:'flex',alignItems:'center',gap:8,marginLeft:'auto' } },
+            h(GlyphBadge, { glyph:meta.glyph, size:28 }),
+            h('div', null,
+              h('div', { style:{ fontFamily:F.body,fontSize:12,fontWeight:600,color:C.text } }, meta.label),
+              h('div', { style:{ fontFamily:F.body,fontSize:10,color:C.textMid } }, meta.sub)
+            )
+          )
+        ),
+        h('div', { style:{ fontFamily:F.serif,fontSize:22,fontWeight:700,color:C.text,
+          lineHeight:1.25,marginBottom:6 } }, meta.prompt),
+        h('div', { style:{ fontFamily:F.body,fontSize:12,color:C.textMid } },
+          voice.listening ? 'Listening...' : meta.hint)
+      )
+    ),
+
+    /* Fields + photos */
+    h('div', { className:'a-scroll', style:{ flex:1,overflowY:'auto',padding:'20px 20px 0' } },
+      ...fieldEls,
+      photoEls,
+      h('div', { style:{ display:'flex',justifyContent:'space-between',alignItems:'center',
+        marginTop:-6,marginBottom:8 } },
+        h('span', { style:{ fontFamily:F.mono,fontSize:10,color:C.textDim } },
+          voice.listening
+            ? (h('span', { style:{ display:'inline-flex',alignItems:'center',gap:6 } },
+                h('span', { style:{ width:6,height:6,borderRadius:'50%',
+                  background:'#dc3c3c',display:'inline-block' }, className:'a-mic-dot' }),
+                'REC · ' + primaryVal.trim().length + ' chars'))
+            : (primaryVal.trim().length + ' chars')),
+        voice.error && h('span', { style:{ fontFamily:F.mono,fontSize:10,color:'#e07070' } },
+          voice.error === 'not-allowed' ? 'Mic blocked' :
+          voice.error === 'no-speech' ? 'No speech heard' : 'Mic unavailable')
+      )
+    ),
+
+    /* Footer with voice + photo + save */
+    h('div', { style:{ flexShrink:0,padding:'14px 20px max(24px,env(safe-area-inset-bottom))',
+      borderTop:'1px solid '+C.border,background:C.surface } },
+
+      /* Action row: mic, photo */
+      h('div', { style:{ display:'flex',gap:10,marginBottom:12 } },
+        voice.supported && h('button', {
+          className: 'a-mic-btn' + (voice.listening ? ' recording' : ''),
+          onClick: handleMicTap,
+          style:{ flex:1,padding:'11px 14px',borderRadius:11,
+            border:'1px solid ' + (voice.listening ? 'rgba(220,60,60,0.5)' : 'rgba(212,175,55,0.22)'),
+            background: voice.listening ? 'rgba(220,60,60,0.15)' : 'transparent',
+            color: voice.listening ? '#e87070' : C.gold,
+            fontFamily:F.body,fontSize:13,fontWeight:600,
+            cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8 } },
+          h('span', { style:{ fontSize:16,lineHeight:1 } }, voice.listening ? '◉' : '●'),
+          h('span', null, voice.listening ? 'Stop' : 'Dictate')
+        ),
+        !voice.supported && h('div', { style:{ flex:1,padding:'11px 14px',borderRadius:11,
+          border:'1px solid '+C.border,background:'transparent',
+          color:C.textDim,fontFamily:F.body,fontSize:12,textAlign:'center' } },
+          'Voice not supported'),
+        h('button', { className:'a-photo-btn', onClick: handlePhotoTap,
+          style:{ flex:1,padding:'11px 14px',borderRadius:11,
+            border:'1px solid rgba(212,175,55,0.22)',background:'transparent',
+            color: C.gold, fontFamily:F.body,fontSize:13,fontWeight:600,
+            cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8 } },
+          h('span', { style:{ fontSize:15,lineHeight:1 } }, '◉'),
+          h('span', null, photos.length > 0 ? 'Add more (' + photos.length + ')' : 'Photo')
+        )
+      ),
+
+      /* Save row */
+      h('div', { style:{ display:'flex',gap:10 } },
+        h('button', { onClick: () => { voice.stop(); onBack(); },
+          style:{ flex:'0 0 auto',padding:'13px 18px',borderRadius:11,
+            border:'1px solid rgba(255,255,255,0.08)',background:'transparent',
+            color:C.textMid,fontFamily:F.body,fontSize:13,cursor:'pointer' } }, 'Cancel'),
+        h('button', { className:'a-log-btn', onClick:handleSave, disabled:!canSave,
+          style:{ flex:1,padding:'13px 20px',borderRadius:11,border:'none',
+            background: canSave ? C.gold : 'rgba(212,175,55,0.2)',
+            color: canSave ? C.bg : C.textDim,
+            fontFamily:F.body,fontSize:14,fontWeight:700,
+            letterSpacing:'0.04em',cursor: canSave ? 'pointer' : 'not-allowed' } },
+          'Log to Atlas'
+        )
+      )
+    )
+  );
+}
+
+/* ── Type Picker Sheet (Step 1) ── */
+function TypePicker({ onSelect, onClose }) {
+  const btns = Object.entries(ET).map(([type, meta]) =>
+    h('button', { key:type, className:'a-add-btn', onClick:() => onSelect(type),
+      style:{ display:'flex',alignItems:'center',gap:14,padding:'11px 14px',
+        borderRadius:11,width:'100%',background:'rgba(255,255,255,0.03)',
+        border:'1px solid '+C.border,cursor:'pointer',textAlign:'left',transition:'all 0.2s' } },
+      h(GlyphBadge, { glyph:meta.glyph }),
+      h('div', null,
+        h('div', { style:{ fontFamily:F.body,fontSize:13,fontWeight:600,color:C.text } }, meta.label),
+        h('div', { style:{ fontFamily:F.body,fontSize:11,color:C.textMid } }, meta.sub)
+      ),
+      h('span', { style:{ marginLeft:'auto',color:C.textDim,fontSize:16 } }, '›')
+    )
+  );
+  return h('div', { style:{ position:'absolute',inset:0,background:'rgba(0,0,0,0.65)',
+    display:'flex',justifyContent:'center',alignItems:'flex-end',zIndex:20,
+    backdropFilter:'blur(4px)' } },
+    h('div', { className:'a-sheet', style:{ width:'100%',background:C.surface,
+      borderRadius:'20px 20px 0 0',padding:'20px 18px 36px',
+      border:'1px solid '+C.border,borderBottom:'none',
+      boxShadow:'0 -20px 60px rgba(0,0,0,0.5)' } },
+      h('div', { style:{ width:36,height:4,borderRadius:2,
+        background:'rgba(255,255,255,0.12)',margin:'0 auto 20px' } }),
+      h('div', { style:{ fontFamily:F.serif,fontSize:22,color:C.text,marginBottom:2 } }, 'Add to Logbook'),
+      h(MonoLabel, { style:{ marginBottom:18 } }, 'What kind of moment?'),
+      h('div', { style:{ display:'flex',flexDirection:'column',gap:8 } }, ...btns),
+      h('button', { onClick:onClose, style:{ marginTop:14,width:'100%',padding:'12px',
+        borderRadius:11,border:'1px solid rgba(255,255,255,0.08)',background:'transparent',
+        color:C.textMid,fontFamily:F.body,fontSize:14,fontWeight:500,cursor:'pointer' } }, 'Cancel')
+    )
+  );
+}
+
+/* ── Home Screen ── */
+function HomeScreen({ entries, summary, patternInsight, suggestion, goToTimeline, openAdd, filterTo }) {
+  const statPills = [
+    { type:'note',    glyph:'✦', label:'Notes',     val:summary.note },
+    { type:'meal',    glyph:'◈', label:'Meals',     val:summary.meal },
+    { type:'workout', glyph:'⊕', label:'Movement',  val:summary.workout },
+    { type:'photo',   glyph:'◉', label:'Photos',    val:summary.photo },
+    { type:'place',   glyph:'◎', label:'Places',    val:summary.place },
+    { type:null,      glyph:'⊛', label:'Total',     val:summary.total, hi:true },
+  ].map(s =>
+    h('button', { key:s.label, className:'a-pill',
+      onClick: () => {
+        if (s.type && s.val > 0) filterTo(s.type);
+        else goToTimeline();
+      },
+      style:{ padding:'10px 8px',borderRadius:10,textAlign:'center',
+        transition:'all 0.2s',
+        cursor: (s.val > 0 || s.hi) ? 'pointer' : 'default',
+        background: s.hi ? C.goldSoft : 'rgba(255,255,255,0.03)',
+        border:'1px solid '+(s.hi ? C.borderG : C.border),
+        opacity: (s.val === 0 && !s.hi) ? 0.5 : 1,
+        fontFamily: 'inherit' } },
+      h('div', { style:{ fontSize:14,marginBottom:3 } }, s.glyph),
+      h('div', { style:{ fontFamily:F.mono,fontSize:18,color: s.hi ? C.gold : C.text } }, s.val),
+      h('div', { style:{ fontFamily:F.body,fontSize:9,color:C.textMid,
+        textTransform:'uppercase',letterSpacing:'0.1em',marginTop:2 } }, s.label)
+    )
+  );
+
+  const recentItems = entries.slice(0,3).map(e => {
+    const meta = ET[e.type] || ET.note;
+    const hasPhoto = e.photos && e.photos.length > 0;
+    return h('div', { key:e.id, className:'a-titem', style:{ display:'flex',
+      justifyContent:'space-between',alignItems:'center',
+      padding:'10px 12px',borderRadius:10,marginBottom:8,
+      background:'rgba(255,255,255,0.03)',border:'1px solid '+C.border,
+      transition:'border-color 0.2s' } },
+      h('div', { style:{ display:'flex',alignItems:'center',gap:10,flex:1,minWidth:0 } },
+        hasPhoto
+          ? h('div', { style:{ width:34,height:34,borderRadius:8,overflow:'hidden',
+              flexShrink:0, border:'1px solid '+C.border } },
+              h('img', { src:e.photos[0], alt:'',
+                style:{ width:'100%',height:'100%',objectFit:'cover',display:'block' } }))
+          : h('span', { style:{ fontSize:13,color:C.gold,marginTop:1,width:20,textAlign:'center' } }, meta.glyph),
+        h('div', { style:{ flex:1,minWidth:0 } },
+          h('div', { style:{ fontFamily:F.body,fontSize:12,fontWeight:600,color:C.text,marginBottom:2 } },
+            meta.label + (hasPhoto && e.photos.length > 1 ? ' · ' + e.photos.length + ' photos' : '')),
+          e.body && h('div', { style:{ fontFamily:F.body,fontSize:12,color:C.textMid,
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' } }, e.body)
+        )
+      ),
+      h('span', { style:{ fontFamily:F.mono,fontSize:10,color:C.textDim,flexShrink:0,marginLeft:8 } },
+        fmtTime(e.createdAt))
+    );
+  });
+
+  return h('div', { className:'a-scroll', style:{ height:'100%',overflowY:'auto',paddingBottom:90 } },
+    /* Hero header */
+    h('div', { style:{ position:'relative',padding:'28px 22px 22px',overflow:'hidden',
+      background:'linear-gradient(180deg,'+C.navy+' 0%,'+C.bg+' 100%)',
+      borderBottom:'1px solid '+C.border } },
+      h(MapGrid),
+      h('div', { style:{ position:'absolute',top:-30,right:-30,zIndex:0 } }, h(CompassRose,{size:160})),
+      h('div', { style:{ position:'relative',zIndex:1 } },
+        h('div', { style:{ display:'flex',justifyContent:'space-between',alignItems:'flex-start' } },
+          h('div', null,
+            h('div', { style:{ fontFamily:F.serif,fontSize:40,fontWeight:900,
+              color:C.text,letterSpacing:'-0.01em',lineHeight:1 } }, 'ATLAS'),
+            h(MonoLabel, { style:{ marginTop:5 } }, 'Personal Cartography System')
+          ),
+          h('div', { style:{ textAlign:'right',paddingTop:4 } },
+            h('span', { style:{ fontFamily:F.mono,fontSize:10,color:C.goldDim,display:'block' } }, '48 52 N'),
+            h('span', { style:{ fontFamily:F.mono,fontSize:10,color:C.goldDim,display:'block' } }, '02 21 E')
+          )
+        ),
+        h('div', { style:{ marginTop:18,padding:'14px 16px',
+          background:'rgba(212,175,55,0.07)',border:'1px solid '+C.borderG,borderRadius:12 } },
+          h('div', { style:{ fontFamily:F.serif,fontSize:17,fontStyle:'italic',
+            color:C.text,lineHeight:1.4,marginBottom:4 } }, 'A window out of autopilot'),
+          h('div', { style:{ fontFamily:F.body,fontSize:12,color:C.textMid,lineHeight:1.55 } },
+            'Atlas traces the cartography of your daily life — noticing where paths narrow and offering a gentle course correction.')
+        )
+      )
+    ),
+
+    h('div', { style:{ padding:'0 16px' } },
+      /* Today summary */
+      h(Card, null,
+        h('div', { style:{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10 } },
+          h(MonoLabel, null, 'Today'),
+          h('span', { style:{ fontFamily:F.body,fontSize:10,color:C.textDim } },
+            summary.total > 0 ? 'Tap to view' : '')
+        ),
+        h('div', { style:{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8 } }, ...statPills)
+      ),
+
+      /* Pattern */
+      h(Card, null,
+        h('div', { style:{ padding:'16px',
+          background:'linear-gradient(135deg,rgba(26,42,66,0.8) 0%,rgba(13,17,23,0.95) 100%)',
+          border:'1px solid rgba(100,140,200,0.2)',borderRadius:14,
+          position:'relative',overflow:'hidden' } },
+          h('div', { style:{ position:'absolute',top:-24,right:-24,width:90,height:90,
+            background:'radial-gradient(circle,rgba(100,140,220,0.1) 0%,transparent 70%)' } }),
+          h(MonoLabel, { style:{ color:'rgba(100,160,255,0.7)',marginBottom:8 } }, 'Pattern Awareness'),
+          h('div', { style:{ fontFamily:F.serif,fontSize:18,color:C.text,marginBottom:8,lineHeight:1.3 } },
+            patternInsight.title),
+          h('div', { style:{ fontFamily:F.body,fontSize:13,color:C.textMid,lineHeight:1.6 } },
+            patternInsight.body)
+        )
+      ),
+
+      /* Suggestion */
+      h(Card, null,
+        h('div', { style:{ padding:'18px',
+          background:'linear-gradient(150deg,#1a2a12 0%,#0f1a0a 60%,#0d1117 100%)',
+          border:'1px solid rgba(100,180,80,0.18)',borderRadius:14,
+          position:'relative',overflow:'hidden' } },
+          h('div', { style:{ position:'absolute',top:-32,right:-32,width:110,height:110,
+            background:'radial-gradient(circle,rgba(80,180,80,0.08) 0%,transparent 70%)' } }),
+          h(MonoLabel, { style:{ color:'rgba(120,200,100,0.75)',marginBottom:8 } },
+            suggestion.category + ' — Suggested Route'),
+          h('div', { style:{ fontFamily:F.serif,fontSize:20,color:C.text,marginBottom:8,lineHeight:1.3 } },
+            suggestion.title),
+          h('div', { style:{ fontFamily:F.body,fontSize:13,color:'rgba(200,220,180,0.8)',
+            lineHeight:1.65,marginBottom:12 } }, suggestion.body),
+          h('div', { style:{ display:'flex',alignItems:'center',gap:6,
+            fontFamily:F.mono,fontSize:11,color:'rgba(120,200,100,0.65)' } },
+            h('span', null, '◈'), h('span', null, suggestion.footer))
+        )
+      ),
+
+      /* View logbook button */
+      h(Card, null,
+        h('button', { className:'a-primary', onClick:goToTimeline,
+          style:{ width:'100%',border:'none',background:C.gold,color:C.bg,
+            padding:'13px 16px',borderRadius:11,
+            fontFamily:F.body,fontSize:13,fontWeight:700,
+            letterSpacing:'0.04em',cursor:'pointer',transition:'all 0.2s' } },
+          'View Logbook')
+      ),
+
+      /* Recent entries */
+      entries.length > 0 && h(Card, null,
+        h(MonoLabel, { style:{ marginBottom:10 } }, 'Recent Entries'),
+        ...recentItems
+      )
+    )
+  );
+}
+
+/* ── Logbook Screen ── */
+function TimelineScreen({ entries, onDelete, filter, clearFilter }) {
+  const filteredEntries = filter ? entries.filter(e => e.type === filter) : entries;
+  const filterMeta = filter ? ET[filter] : null;
+
+  if (!entries.length) {
+    return h('div', { className:'a-scroll', style:{ height:'100%',overflowY:'auto',paddingBottom:90 } },
+      h(ScreenHeader, { title:'The Logbook', subtitle:'Everything you\'ve logged' }),
+      h('div', { style:{ padding:16 } },
+        h('div', { style:{ marginTop:8,padding:'36px 24px',textAlign:'center',
+          background:'rgba(255,255,255,0.02)',
+          border:'1px dashed rgba(212,175,55,0.18)',borderRadius:16 } },
+          h('div', { style:{ fontSize:32,marginBottom:12,opacity:0.4 } }, '◎'),
+          h('div', { style:{ fontFamily:F.serif,fontSize:18,color:C.text,marginBottom:8 } }, 'No entries yet'),
+          h('div', { style:{ fontFamily:F.body,fontSize:13,color:C.textMid,lineHeight:1.6 } },
+            'Add a note, meal, workout, photo, or place to begin building your atlas.')
+        )
+      )
+    );
+  }
+
+  // Filter chip (if filter active)
+  const filterChip = filter ? h('div', { style:{ display:'flex',alignItems:'center',
+    justifyContent:'space-between', padding:'10px 14px', marginBottom:14,
+    background: C.goldSoft, border:'1px solid '+C.borderG, borderRadius:11 } },
+    h('div', { style:{ display:'flex',alignItems:'center',gap:8 } },
+      h('span', { style:{ color:C.gold,fontSize:14 } }, filterMeta.glyph),
+      h('span', { style:{ fontFamily:F.body,fontSize:12,color:C.text } },
+        'Showing ' + filterMeta.label.toLowerCase() + ' only'),
+      h('span', { style:{ fontFamily:F.mono,fontSize:11,color:C.goldDim } },
+        '· ' + filteredEntries.length)
+    ),
+    h('button', { onClick: clearFilter,
+      style:{ background:'none',border:'none',color:C.gold,
+        fontFamily:F.body,fontSize:12,fontWeight:600,cursor:'pointer',padding:'4px 8px' } },
+      'Show all ×')
+  ) : null;
+
+  // Empty-after-filter state
+  if (filter && filteredEntries.length === 0) {
+    return h('div', { className:'a-scroll', style:{ height:'100%',overflowY:'auto',paddingBottom:90 } },
+      h(ScreenHeader, { title:'The Logbook', subtitle:'Everything you\'ve logged' }),
+      h('div', { style:{ padding:16 } },
+        filterChip,
+        h('div', { style:{ padding:'36px 24px',textAlign:'center',
+          background:'rgba(255,255,255,0.02)',
+          border:'1px dashed rgba(212,175,55,0.18)',borderRadius:16 } },
+          h('div', { style:{ fontSize:32,marginBottom:12,opacity:0.4 } }, filterMeta.glyph),
+          h('div', { style:{ fontFamily:F.serif,fontSize:18,color:C.text,marginBottom:8 } },
+            'No ' + filterMeta.label.toLowerCase() + ' entries'),
+          h('div', { style:{ fontFamily:F.body,fontSize:13,color:C.textMid,lineHeight:1.6 } },
+            'Nothing logged in this category yet.')
+        )
+      )
+    );
+  }
+
+  // Group entries by date (on filtered list)
+  const groups = [];
+  let currentDate = null, currentGroup = null;
+  filteredEntries.forEach(e => {
+    const d = fmtDate(e.createdAt);
+    if (d !== currentDate) {
+      currentDate = d;
+      currentGroup = { date: d, items: [] };
+      groups.push(currentGroup);
+    }
+    currentGroup.items.push(e);
+  });
+
+  const groupEls = groups.map(g =>
+    h(Fragment, { key: g.date },
+      h('div', { style:{ fontFamily:F.mono,fontSize:10,color:C.goldDim,
+        letterSpacing:'0.18em',textTransform:'uppercase',
+        padding:'12px 0 8px',borderBottom:'1px solid rgba(212,175,55,0.1)',
+        marginBottom:10 } }, g.date),
+      ...g.items.map((e, i) => {
+        const meta = ET[e.type] || ET.note;
+        return h('div', { key:e.id, className:'a-card a-titem',
+          style:{ padding:'14px 16px',borderRadius:12,marginBottom:10,
+            background:C.card,border:'1px solid '+C.border,
+            transition:'border-color 0.2s',animationDelay:(i*0.05)+'s' } },
+          h('div', { style:{ display:'flex',justifyContent:'space-between',
+            alignItems:'flex-start',marginBottom: e.body ? 10 : 0 } },
+            h('div', { style:{ display:'flex',alignItems:'center',gap:10 } },
+              h(GlyphBadge, { glyph:meta.glyph }),
+              h('div', null,
+                h('div', { style:{ fontFamily:F.body,fontSize:13,fontWeight:600,color:C.text } }, meta.label),
+                h('div', { style:{ fontFamily:F.body,fontSize:11,color:C.textMid } }, meta.sub)
+              )
+            ),
+            h('div', { style:{ display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4 } },
+              h('div', { style:{ fontFamily:F.mono,fontSize:10,color:C.textDim,
+                background:'rgba(255,255,255,0.04)',padding:'3px 7px',borderRadius:5 } },
+                '#' + String(entries.length - entries.indexOf(e)).padStart(3,'0')),
+              h('div', { style:{ fontFamily:F.mono,fontSize:10,color:C.textMid } },
+                fmtTime(e.createdAt))
+            )
+          ),
+          e.body && h('div', { style:{ paddingLeft:44 } },
+            h('div', { style:{ fontFamily:F.body,fontSize:14,color:C.text,lineHeight:1.6,
+              marginBottom: e.context ? 6 : 0 } }, e.body),
+            e.context && h('div', { style:{ fontFamily:F.body,fontSize:12,color:C.textMid,
+              lineHeight:1.5,fontStyle:'italic' } }, e.context)
+          ),
+          e.photos && e.photos.length > 0 && h('div', { style:{ paddingLeft:44, marginTop: e.body ? 10 : 0,
+            display:'flex', gap:6, flexWrap:'wrap' } },
+            ...e.photos.map((src, pi) =>
+              h('div', { key:pi, className:'a-photo-thumb', style:{
+                width: e.photos.length === 1 ? '100%' : 84,
+                height: e.photos.length === 1 ? 180 : 84,
+                maxWidth: e.photos.length === 1 ? '100%' : 84,
+                borderRadius:10, overflow:'hidden',
+                border:'1px solid ' + C.border,
+                background:'rgba(255,255,255,0.03)' } },
+                h('img', { src, alt:'entry photo',
+                  style:{ width:'100%', height:'100%', objectFit:'cover', display:'block' } })
+              )
+            )
+          ),
+          h('div', { style:{ display:'flex',justifyContent:'flex-end',marginTop:8,paddingLeft:44 } },
+            h('button', { className:'a-del', onClick:() => onDelete(e.id),
+              style:{ background:'none',border:'1px solid rgba(255,255,255,0.06)',
+                color:C.textDim,fontFamily:F.body,fontSize:11,
+                padding:'4px 10px',borderRadius:6,cursor:'pointer',transition:'all 0.2s' } },
+              'Delete')
+          )
+        );
+      })
+    )
+  );
+
+  return h('div', { className:'a-scroll', style:{ height:'100%',overflowY:'auto',paddingBottom:90 } },
+    h(ScreenHeader, { title:'The Logbook', subtitle:'Everything you\'ve logged' }),
+    h('div', { style:{ padding:'16px' } }, filterChip, ...groupEls)
+  );
+}
+
+/* ── Patterns Screen ── */
+function PatternsScreen({ entries }) {
+  const hasData = entries.length >= 3;
+
+  if (!hasData) {
+    return h('div', { className:'a-scroll', style:{ height:'100%',overflowY:'auto',paddingBottom:90 } },
+      h(ScreenHeader, { title:'Patterns', subtitle:'What Atlas is noticing' }),
+      h('div', { style:{ padding:'16px' } },
+        h('div', { className:'a-card', style:{ marginTop:8,padding:'36px 24px',textAlign:'center',
+          background:'rgba(255,255,255,0.02)',
+          border:'1px dashed rgba(212,175,55,0.18)',borderRadius:16 } },
+          h('div', { style:{ fontSize:32,marginBottom:12,opacity:0.35 } }, '◈'),
+          h('div', { style:{ fontFamily:F.serif,fontSize:18,color:C.text,marginBottom:8 } },
+            'Not enough signal yet'),
+          h('div', { style:{ fontFamily:F.body,fontSize:13,color:C.textMid,lineHeight:1.65 } },
+            'Atlas needs at least 3 moments before it can read the shape of your days. Keep logging.')
+        )
+      )
+    );
+  }
+
+  const { signals, stats } = computeSignals(entries);
+  signals.sort((a, b) => b.strength - a.strength);
+
+  // Breakdown by type over the last 14
+  const recent14 = entries.filter(e => (new Date() - new Date(e.createdAt)) < 14 * DAY_MS);
+  const typeCount = { note:0, meal:0, workout:0, photo:0, place:0 };
+  recent14.forEach(e => { if (typeCount[e.type] !== undefined) typeCount[e.type]++; });
+  const maxCount = Math.max(1, ...Object.values(typeCount));
+
+  // Kind → color mapping for signal cards
+  const kindStyles = {
+    narrowing:  { accent:'rgba(220,130,100,0.7)', bg:'linear-gradient(135deg,rgba(60,40,30,0.8) 0%,rgba(13,17,23,0.95) 100%)', border:'rgba(220,130,100,0.22)' },
+    awareness:  { accent:'rgba(100,160,255,0.75)', bg:'linear-gradient(135deg,rgba(26,42,66,0.8) 0%,rgba(13,17,23,0.95) 100%)', border:'rgba(100,140,200,0.22)' },
+    rhythm:     { accent:'rgba(180,160,255,0.75)', bg:'linear-gradient(135deg,rgba(40,35,60,0.8) 0%,rgba(13,17,23,0.95) 100%)', border:'rgba(160,140,220,0.22)' },
+    positive:   { accent:'rgba(120,200,100,0.75)', bg:'linear-gradient(135deg,rgba(30,50,25,0.8) 0%,rgba(13,17,23,0.95) 100%)', border:'rgba(100,180,80,0.22)' },
+    neutral:    { accent:'rgba(212,175,55,0.7)',   bg:'linear-gradient(135deg,rgba(40,36,25,0.8) 0%,rgba(13,17,23,0.95) 100%)', border:'rgba(212,175,55,0.22)' },
+    wait:       { accent:'rgba(138,154,184,0.7)',  bg:'rgba(255,255,255,0.02)', border:'rgba(255,255,255,0.08)' },
+  };
+
+  return h('div', { className:'a-scroll', style:{ height:'100%',overflowY:'auto',paddingBottom:90 } },
+    h(ScreenHeader, { title:'Patterns', subtitle:'What Atlas is noticing' }),
+
+    h('div', { style:{ padding:'16px' } },
+
+      /* Stats strip */
+      h(Card, null,
+        h(MonoLabel, { style:{ marginBottom:10 } }, 'Reading'),
+        h('div', { style:{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8 } },
+          [
+            { label:'Logged',     val: stats.total },
+            { label:'Days',       val: stats.daysOfHistory },
+            { label:'This week',  val: stats.last7 },
+          ].map(s => h('div', { key:s.label,
+            style:{ padding:'11px 8px',borderRadius:10,textAlign:'center',
+              background:'rgba(255,255,255,0.03)', border:'1px solid '+C.border } },
+            h('div', { style:{ fontFamily:F.mono,fontSize:20,color:C.text,lineHeight:1 } }, s.val),
+            h('div', { style:{ fontFamily:F.body,fontSize:9,color:C.textMid,
+              textTransform:'uppercase',letterSpacing:'0.1em',marginTop:4 } }, s.label)
+          ))
+        )
+      ),
+
+      /* Signal cards — primary surface */
+      h(Card, null,
+        h(MonoLabel, { style:{ marginBottom:10 } },
+          signals.length > 1 ? 'What Atlas is noticing' : 'What Atlas is noticing'),
+        ...signals.slice(0, 4).map((s, i) => {
+          const st = kindStyles[s.kind] || kindStyles.neutral;
+          const kindLabel = {
+            narrowing: 'Narrowing', awareness: 'Awareness',
+            rhythm: 'Rhythm', positive: 'Range',
+            neutral: 'Shape', wait: 'Waiting',
+          }[s.kind] || 'Signal';
+          return h('div', { key: s.id,
+            style: { padding:'14px 16px', marginBottom: i === signals.length - 1 ? 0 : 10,
+              background: st.bg, border: '1px solid '+st.border, borderRadius: 12,
+              position:'relative', overflow:'hidden' } },
+            h('div', { style:{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8 } },
+              h(MonoLabel, { style:{ color: st.accent } }, kindLabel),
+              i === 0 && h('span', { style:{ fontFamily:F.mono,fontSize:9,
+                color: st.accent, opacity:0.8,
+                background: 'rgba(255,255,255,0.04)',
+                padding:'2px 7px', borderRadius: 4, letterSpacing:'0.08em' } }, 'HEADLINE')
+            ),
+            h('div', { style:{ fontFamily:F.serif,fontSize:16,color:C.text,
+              marginBottom:6,lineHeight:1.3 } }, s.title),
+            h('div', { style:{ fontFamily:F.body,fontSize:13,color:C.textMid,lineHeight:1.6 } }, s.body)
+          );
+        })
+      ),
+
+      /* Type distribution bars */
+      h(Card, null,
+        h(MonoLabel, { style:{ marginBottom:12 } }, 'Entry Distribution · Last 14 Days'),
+        ...Object.entries(ET).map(([type, meta]) => {
+          const count = typeCount[type] || 0;
+          const pct = count / maxCount;
+          return h('div', { key: type, style:{ marginBottom: 10 } },
+            h('div', { style:{ display:'flex',justifyContent:'space-between',
+              alignItems:'center',marginBottom:5 } },
+              h('div', { style:{ display:'flex',alignItems:'center',gap:8 } },
+                h('span', { style:{ color:C.gold, fontSize:13, width:14 } }, meta.glyph),
+                h('span', { style:{ fontFamily:F.body,fontSize:12,color:C.text } }, meta.label)
+              ),
+              h('span', { style:{ fontFamily:F.mono,fontSize:11,color:C.textMid } }, count)
+            ),
+            h('div', { style:{ height: 4, background:'rgba(255,255,255,0.04)',
+              borderRadius:2, overflow:'hidden' } },
+              h('div', { style:{ height:'100%',
+                width: Math.max(pct * 100, count > 0 ? 3 : 0) + '%',
+                background: count > 0 ? C.gold : 'transparent',
+                transition: 'width 0.5s ease' } })
+            )
+          );
+        })
+      ),
+
+      /* What this page means (honest framing) */
+      h(Card, null,
+        h('div', { style:{ padding:'14px 16px',background:'rgba(255,255,255,0.02)',
+          border:'1px solid '+C.border,borderRadius:12 } },
+          h(MonoLabel, { style:{ marginBottom:8 } }, 'How Atlas reads you'),
+          h('div', { style:{ fontFamily:F.body,fontSize:12,color:C.textMid,lineHeight:1.65 } },
+            'These signals come from reading your actual entries — their types, timing, text, and gaps. ' +
+            'Atlas doesn\'t score you. It just tries to notice what might otherwise slip past.')
+        )
+      )
+    )
+  );
+}
+
+/* ── Profile Screen ── */
+function ProfileScreen({ entries, onClearAll }) {
+  const total = entries.length;
+  const types = new Set(entries.map(e => e.type)).size;
+  const days  = new Set(entries.map(e => new Date(e.createdAt).toDateString())).size;
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  return h('div', { className:'a-scroll', style:{ height:'100%',overflowY:'auto',paddingBottom:90 } },
+    h(ScreenHeader, { title:'Profile', subtitle:'Your Atlas' }),
+    h('div', { style:{ padding:'16px' } },
+      h('div', { className:'a-card', style:{ padding:'22px 18px',
+        background:'linear-gradient(150deg,'+C.navy+' 0%,'+C.bg+' 100%)',
+        border:'1px solid '+C.borderG,borderRadius:14,textAlign:'center',
+        position:'relative',overflow:'hidden' } },
+        h(MapGrid),
+        h('div', { style:{ position:'relative',zIndex:1 } },
+          h('div', { style:{ width:60,height:60,borderRadius:'50%',margin:'0 auto 12px',
+            background:C.goldSoft,border:'1px solid '+C.borderG,
+            display:'flex',alignItems:'center',justifyContent:'center',fontSize:26 } }, '◎'),
+          h('div', { style:{ fontFamily:F.serif,fontSize:20,color:C.text,marginBottom:4 } }, 'Your Atlas'),
+          h(MonoLabel, null, 'Explorer — Active')
+        )
+      ),
+      h(Card, null,
+        h(MonoLabel, { style:{ marginBottom:10 } }, 'Journey Summary'),
+        ...[
+          { label:'Total moments logged', val:total,           g:'⊛' },
+          { label:'Entry types used',     val:types+' / 5',    g:'◈' },
+          { label:'Days with entries',    val:days,             g:'◎' },
+        ].map(s =>
+          h('div', { key:s.label, style:{ display:'flex',justifyContent:'space-between',
+            alignItems:'center',padding:'11px 14px',borderRadius:10,marginBottom:8,
+            background:'rgba(255,255,255,0.03)',border:'1px solid '+C.border } },
+            h('div', { style:{ display:'flex',alignItems:'center',gap:10 } },
+              h('span', { style:{ color:C.gold,fontSize:14 } }, s.g),
+              h('span', { style:{ fontFamily:F.body,fontSize:13,color:C.textMid } }, s.label)
+            ),
+            h('span', { style:{ fontFamily:F.mono,fontSize:15,color:C.text } }, s.val)
+          )
+        )
+      ),
+      h(Card, null,
+        h('div', { style:{ padding:'14px 16px',background:'rgba(255,255,255,0.02)',
+          border:'1px solid rgba(220,80,80,0.15)',borderRadius:12 } },
+          h(MonoLabel, { style:{ marginBottom:8,color:'rgba(220,100,100,0.6)' } }, 'Data'),
+          h('div', { style:{ fontFamily:F.body,fontSize:13,color:C.textMid,lineHeight:1.6,marginBottom:12 } },
+            'Your entries are saved in this browser. Clearing will permanently delete all logged moments.'),
+          confirmClear
+            ? h('div', { style:{ display:'flex',gap:8 } },
+                h('button', { onClick:() => setConfirmClear(false),
+                  style:{ flex:1,padding:'10px',borderRadius:9,
+                    border:'1px solid rgba(255,255,255,0.08)',background:'transparent',
+                    color:C.textMid,fontFamily:F.body,fontSize:13,cursor:'pointer' } }, 'Cancel'),
+                h('button', { onClick:onClearAll,
+                  style:{ flex:1,padding:'10px',borderRadius:9,border:'none',
+                    background:'rgba(220,60,60,0.85)',color:'#fff',
+                    fontFamily:F.body,fontSize:13,fontWeight:600,cursor:'pointer' } },
+                  'Yes, clear all')
+              )
+            : h('button', { onClick:() => setConfirmClear(true),
+                style:{ width:'100%',padding:'10px',borderRadius:9,
+                  border:'1px solid rgba(220,80,80,0.3)',background:'transparent',
+                  color:'rgba(220,100,100,0.8)',fontFamily:F.body,fontSize:13,cursor:'pointer' } },
+                'Clear all entries')
+        )
+      )
+    )
+  );
+}
+
+/* ── Bottom Nav ── */
+function BottomNav({ screen, setScreen, openAdd }) {
+  const tabs = [
+    { id:'home',     label:'Home',     glyph:'⌂' },
+    { id:'timeline', label:'Log',      glyph:'≡' },
+    { id:'add',      label:'Record',   glyph:'+', isAdd:true },
+    { id:'patterns', label:'Patterns', glyph:'◈' },
+    { id:'profile',  label:'Profile',  glyph:'○' },
+  ];
+  return h('nav', { style:{ position:'absolute',bottom:0,left:0,right:0,
+    display:'flex',justifyContent:'space-around',alignItems:'center',
+    padding:'10px 8px max(16px,env(safe-area-inset-bottom))',
+    background:C.surface,borderTop:'1px solid '+C.border,
+    backdropFilter:'blur(12px)' } },
+    ...tabs.map(t => {
+      const active = screen === t.id;
+      return h('button', { key:t.id, className:'a-nav-btn',
+        onClick:() => t.isAdd ? openAdd() : setScreen(t.id),
+        style:{ border: active && !t.isAdd ? '1px solid '+C.borderG : 'none',
+          background: t.isAdd ? C.gold : active ? C.goldSoft : 'none',
+          cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:2,
+          padding: t.isAdd ? '6px 10px' : '4px 8px',
+          borderRadius: t.isAdd ? 10 : 8,
+          color: t.isAdd ? C.bg : active ? C.gold : C.textMid,
+          transition:'all 0.2s' } },
+        h('span', { style:{ fontSize: t.isAdd ? 18 : 14, fontWeight:600, lineHeight:1 } }, t.glyph),
+        h('span', { style:{ fontFamily:F.body,fontSize:9,fontWeight:500,
+          letterSpacing:'0.07em',textTransform:'uppercase' } }, t.label)
+      );
+    })
+  );
+}
+
+/* ── Root App ── */
+function App() {
+  const [screen,  setScreen]  = useState('home');
+  const [addFlow, setAddFlow] = useState(null); // null | 'picking' | { type, initialPhoto? }
+  const [entries, setEntries] = useState(() => loadEntries());
+  const [timelineFilter, setTimelineFilter] = useState(null); // null | entry-type string
+  const quickPhotoRef = useRef(null);
+
+  // Persist on every change
+  useEffect(() => { saveEntries(entries); }, [entries]);
+
+  const openAdd     = () => setAddFlow('picking');
+  const closeAdd    = () => setAddFlow(null);
+  const selectType  = t  => setAddFlow({ type: t });
+  const backToPick  = () => setAddFlow('picking');
+
+  // Navigate to timeline, optionally filtered
+  function goToTimeline(filterType) {
+    setTimelineFilter(filterType || null);
+    setScreen('timeline');
+  }
+  function clearFilter() { setTimelineFilter(null); }
+
+  // Wrap setScreen so navigating away from timeline also clears filter
+  function navigate(target) {
+    if (target !== 'timeline') setTimelineFilter(null);
+    setScreen(target);
+  }
+
+  function triggerQuickPhoto() {
+    quickPhotoRef.current && quickPhotoRef.current.click();
+  }
+
+  async function handleQuickPhoto(e) {
+    const file = (e.target.files || [])[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const data = await resizeImage(file, 1000);
+      // Open input screen pre-loaded with photo, default type = photo (Visual Survey)
+      setAddFlow({ type: 'photo', initialPhoto: data });
+    } catch (err) {
+      console.error('Quick photo error', err);
+    }
+  }
+
+  function saveEntry(type, vals, photos) {
+    const meta = ET[type];
+    const entry = {
+      id:        Date.now(),
+      type,
+      body:      (vals[meta.fields[0].key] || '').trim(),
+      context:   (vals['context'] || '').trim(),
+      photos:    photos || [],
+      createdAt: new Date().toISOString(),
+    };
+    setEntries(prev => {
+      const next = [entry, ...prev];
+      saveEntries(next);
+      return next;
+    });
+    setAddFlow(null);
+    setScreen('timeline');
+  }
+
+  function deleteEntry(id) {
+    setEntries(prev => {
+      const next = prev.filter(e => e.id !== id);
+      saveEntries(next);
+      return next;
+    });
+  }
+
+  function clearAll() {
+    setEntries([]);
+    saveEntries([]);
+    setScreen('home');
+  }
+
+  const summary = useMemo(() => {
+    const c = { note:0, meal:0, workout:0, photo:0, place:0 };
+    entries.forEach(e => { if (c[e.type] !== undefined) c[e.type]++; });
+    return { total:entries.length, ...c };
+  }, [entries]);
+
+  const patternInsight = useMemo(() => getPatternInsight(entries), [entries]);
+  const suggestion     = useMemo(() => getSuggestion(entries, patternInsight), [entries, patternInsight]);
+
+  let screen_el;
+  if (screen === 'home') screen_el = h(HomeScreen, {
+    entries, summary, patternInsight, suggestion,
+    goToTimeline: () => goToTimeline(null),
+    filterTo: (type) => goToTimeline(type),
+    openAdd
+  });
+  else if (screen === 'timeline') screen_el = h(TimelineScreen, {
+    entries, onDelete: deleteEntry,
+    filter: timelineFilter, clearFilter
+  });
+  else if (screen === 'patterns') screen_el = h(PatternsScreen, { entries });
+  else if (screen === 'profile')  screen_el = h(ProfileScreen,  { entries, onClearAll: clearAll });
+
+  return h('div', { id:'shell' },
+    /* Hidden quick-photo input */
+    h('input', { type:'file', accept:'image/*', capture:'environment',
+      ref: quickPhotoRef, onChange: handleQuickPhoto,
+      style:{ display:'none' } }),
+
+    screen_el,
+
+    /* Quick Photo FAB — only on home & timeline, not when add flow is open */
+    (screen === 'home' || screen === 'timeline') && !addFlow && h('button', {
+      className: 'a-fab',
+      onClick: triggerQuickPhoto,
+      title: 'Quick capture a photo',
+      style: { position:'absolute', right:18, bottom:88,
+        width:52, height:52, borderRadius:'50%',
+        background:'linear-gradient(145deg, #1a2434 0%, #0d1117 100%)',
+        border:'1px solid ' + C.borderG,
+        color: C.gold, fontSize:22, lineHeight:1,
+        cursor:'pointer', zIndex:15,
+        display:'flex', alignItems:'center', justifyContent:'center',
+        boxShadow:'0 6px 18px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.05)' } },
+      h('span', { style: { filter:'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' } }, '◉')
+    ),
+
+    addFlow === 'picking' && h(TypePicker, { onSelect: selectType, onClose: closeAdd }),
+    addFlow && addFlow.type && h(EntryInputScreen, {
+      type: addFlow.type, onSave: saveEntry, onBack: backToPick,
+      initialPhoto: addFlow.initialPhoto
+    }),
+    h(BottomNav, { screen, setScreen: navigate, openAdd })
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+</script>
+</body>
+</html>
