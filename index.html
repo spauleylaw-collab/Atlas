@@ -76,6 +76,8 @@ body { font-family: 'Jost', system-ui, sans-serif; }
   font-family: 'Jost', system-ui, sans-serif;
   font-size: 16px; font-weight: 400; line-height: 1.7;
   caret-color: #d4af37;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 .a-textarea::placeholder { color: rgba(138,154,184,0.4); }
 .a-input {
@@ -84,8 +86,18 @@ body { font-family: 'Jost', system-ui, sans-serif; }
   font-family: 'Jost', system-ui, sans-serif;
   font-size: 16px; font-weight: 400; line-height: 1.7;
   caret-color: #d4af37;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
 }
 .a-input::placeholder { color: rgba(138,154,184,0.4); }
+
+/* Text wrapping for any entry display / body text */
+.a-wrap {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
 
 /* ── Log button ── */
 .a-log-btn { transition: all 0.2s; }
@@ -193,16 +205,16 @@ const ET = {
     glyph: '◈', label: 'Meal', sub: 'Something you ate or drank',
     prompt: 'What did you eat or drink?', hint: 'Keep it simple — a few words is enough.',
     fields: [
-      { key: 'body',    label: 'What',           multiline: false, placeholder: 'e.g. oatmeal and coffee, leftover pasta...' },
-      { key: 'context', label: 'Where / with whom', multiline: false, placeholder: 'e.g. at home, at the desk, with Maya...' },
+      { key: 'body',    label: 'What',           multiline: true, rows: 2, placeholder: 'e.g. oatmeal and coffee, leftover pasta...' },
+      { key: 'context', label: 'Where / with whom', multiline: true, rows: 2, placeholder: 'e.g. at home, at the desk, with Maya...' },
     ],
   },
   workout: {
     glyph: '⊕', label: 'Movement', sub: 'Exercise, walk, or activity',
     prompt: 'What did you do?', hint: 'Any movement counts — big or small.',
     fields: [
-      { key: 'body',    label: 'Activity',   multiline: false, placeholder: 'e.g. 30 min run, yoga, walked to the market...' },
-      { key: 'context', label: 'How it felt', multiline: false, placeholder: 'e.g. slow and hard, surprisingly good...' },
+      { key: 'body',    label: 'Activity',   multiline: true, rows: 2, placeholder: 'e.g. 30 min run, yoga, walked to the market...' },
+      { key: 'context', label: 'How it felt', multiline: true, rows: 2, placeholder: 'e.g. slow and hard, surprisingly good...' },
     ],
   },
   photo: {
@@ -214,8 +226,8 @@ const ET = {
     glyph: '◎', label: 'Place', sub: 'Somewhere you were',
     prompt: 'Where were you?', hint: 'Name the place and what brought you there.',
     fields: [
-      { key: 'body',    label: 'Place name',         multiline: false, placeholder: 'e.g. the coffee shop on Rue de Bretagne...' },
-      { key: 'context', label: 'Why or what happened', multiline: false, placeholder: 'e.g. first time here, worked all morning...' },
+      { key: 'body',    label: 'Place name',         multiline: true, rows: 2, placeholder: 'e.g. the coffee shop on Rue de Bretagne...' },
+      { key: 'context', label: 'Why or what happened', multiline: true, rows: 2, placeholder: 'e.g. first time here, worked all morning...' },
     ],
   },
 };
@@ -311,7 +323,6 @@ function computeSignals(entries) {
     return age >= 7 * DAY_MS && age < 14 * DAY_MS;
   });
 
-  // Earliest entry determines whether we have enough history
   const firstEntry = entries[entries.length - 1];
   const daysOfHistory = firstEntry
     ? Math.max(1, Math.ceil((now - new Date(firstEntry.createdAt)) / DAY_MS))
@@ -331,47 +342,63 @@ function computeSignals(entries) {
     return { signals, stats };
   }
 
-  // ── Signal 1: Type dominance in recent 14
+  // ── Signal 1: Type dominance (LOOSENED)
   const typeCount = { note:0, meal:0, workout:0, photo:0, place:0 };
   recent14.forEach(e => { if (typeCount[e.type] !== undefined) typeCount[e.type]++; });
   const typesUsed = Object.values(typeCount).filter(v => v > 0).length;
   const topType   = Object.entries(typeCount).sort((a,b) => b[1] - a[1])[0];
   const topPct    = recent14.length > 0 ? topType[1] / recent14.length : 0;
 
-  if (typesUsed <= 1 && recent14.length >= 4) {
+  if (typesUsed <= 1 && recent14.length >= 3) {
     signals.push({
       id: 'mono-type', strength: 85, kind: 'narrowing',
       title: 'Only one kind of moment lately',
-      body: 'In your last ' + recent14.length + ' entries, all of them are ' +
-            ET[topType[0]].label.toLowerCase() + '. The rest of your day is either going unlogged — or going unnoticed.',
+      body: 'All ' + recent14.length + ' of your recent entries are ' +
+            ET[topType[0]].label.toLowerCase() + 's. The rest of your day is either going unlogged — or going unnoticed.',
       evidence: { type: topType[0], count: topType[1] },
     });
-  } else if (topPct >= 0.7 && recent14.length >= 5) {
+  } else if (topPct >= 0.55 && recent14.length >= 4) {
     signals.push({
       id: 'heavy-tilt', strength: 70, kind: 'narrowing',
-      title: ET[topType[0]].label + ' is dominating the map',
+      title: ET[topType[0]].label + 's dominate the map',
       body: Math.round(topPct * 100) + '% of your recent entries are ' +
-            ET[topType[0]].label.toLowerCase() + '. Repetition can be focus, or it can be a quieter kind of narrowing.',
+            ET[topType[0]].label.toLowerCase() + 's (' + topType[1] + ' of ' + recent14.length + '). Repetition can be focus, or a quieter kind of narrowing.',
       evidence: { type: topType[0], pct: topPct },
     });
   }
 
-  // ── Signal 2: Same-type streak at the very top of the feed
+  // ── Signal 1b: Underused types (NEW)
+  if (total >= 6) {
+    const unused = Object.entries(typeCount).filter(([_, c]) => c === 0).map(([k, _]) => k);
+    if (unused.length >= 2 && unused.length <= 3) {
+      const labels = unused.map(k => ET[k].label.toLowerCase());
+      const last = labels.pop();
+      const joined = labels.length ? labels.join(', ') + ' or ' + last : last;
+      signals.push({
+        id: 'unused-types', strength: 55, kind: 'narrowing',
+        title: 'Nothing logged as ' + joined + ' recently',
+        body: 'These parts of life might be happening — just not reaching the log. What would it take to notice them?',
+        evidence: { unused },
+      });
+    }
+  }
+
+  // ── Signal 2: Same-type streak (LOOSENED to 3+)
   let streak = 1;
   for (let i = 1; i < Math.min(entries.length, 10); i++) {
     if (entries[i].type === entries[0].type) streak++; else break;
   }
-  if (streak >= 4) {
+  if (streak >= 3) {
     signals.push({
-      id: 'streak', strength: 75, kind: 'narrowing',
-      title: 'Same thing, ' + streak + ' times in a row',
+      id: 'streak', strength: 65, kind: 'narrowing',
+      title: 'Same type ' + streak + ' times in a row',
       body: 'Your last ' + streak + ' entries are all ' +
-            ET[entries[0].type].label.toLowerCase() + '. That can be deep focus — or it can be the moment to log something else on purpose.',
+            ET[entries[0].type].label.toLowerCase() + 's. Not wrong — just worth noticing.',
       evidence: { type: entries[0].type, streak },
     });
   }
 
-  // ── Signal 3: Time-of-day concentration
+  // ── Signal 3: Time-of-day concentration (LOOSENED to 55%)
   const hourBuckets = { morning:0, afternoon:0, evening:0, night:0 };
   recent14.forEach(e => {
     const h = new Date(e.createdAt).getHours();
@@ -383,126 +410,188 @@ function computeSignals(entries) {
   const hourTotal = Object.values(hourBuckets).reduce((a,b) => a+b, 0);
   const topHour   = Object.entries(hourBuckets).sort((a,b) => b[1] - a[1])[0];
   const hourPct   = hourTotal > 0 ? topHour[1] / hourTotal : 0;
-  if (hourPct >= 0.75 && hourTotal >= 6) {
+  if (hourPct >= 0.55 && hourTotal >= 5) {
     const bucketLabel = {
       morning: 'mornings', afternoon: 'afternoons',
       evening: 'evenings', night: 'late nights',
     }[topHour[0]];
     signals.push({
       id: 'time-tilt', strength: 55, kind: 'rhythm',
-      title: 'Almost everything happens in ' + bucketLabel,
-      body: Math.round(hourPct * 100) + '% of your entries land in the ' + bucketLabel + '. ' +
-            'That may be real shape, or it may mean the other parts of your day are going undocumented.',
+      title: 'Your log lives in the ' + bucketLabel,
+      body: Math.round(hourPct * 100) + '% of your entries land in the ' + bucketLabel +
+            ' (' + topHour[1] + ' of ' + hourTotal + '). The other hours of your day might be worth pulling in too.',
     });
   }
 
-  // ── Signal 4: Waypoint drought (no new places lately)
+  // ── Signal 4: Place drought (LOOSENED to 3 days)
   const lastPlace = entries.find(e => e.type === 'place');
   const daysSincePlace = lastPlace ? daysBetween(now, lastPlace.createdAt) : Infinity;
-  if (daysOfHistory >= 4 && daysSincePlace >= 5 && total >= 5) {
+  if (daysOfHistory >= 3 && daysSincePlace >= 3 && total >= 4) {
     const msg = lastPlace
-      ? 'You haven\'t marked a new place in ' + daysSincePlace + ' days. The map is still, which can be peaceful — or it can be a sign the usual loop has tightened.'
-      : 'You haven\'t marked a single place yet. Somewhere you\'ve been is part of the shape of a life — is there somewhere worth pinning?';
+      ? 'You haven\'t marked a new place in ' + daysSincePlace + ' days. The map is still, which can be peaceful — or a sign the usual loop has tightened.'
+      : 'You haven\'t logged a single place yet. Where you go shapes the rest — is there somewhere worth pinning?';
     signals.push({
-      id: 'no-places', strength: 65, kind: 'narrowing',
-      title: 'You haven\'t logged a place in a while',
+      id: 'no-places', strength: lastPlace ? 55 : 70, kind: 'narrowing',
+      title: lastPlace ? 'No new places in ' + daysSincePlace + ' days' : 'No places logged yet',
       body: msg,
     });
   }
 
-  // ── Signal 5: No one named in recent entries (isolation signal)
+  // ── Signal 5: Isolation (no names) — LOOSENED
   const withReferences = recent14.filter(e => {
-    const t = allText(e).toLowerCase();
-    // crude: has "with", or a capitalized word that looks like a name in original case
     const orig = allText(e);
-    const hasWith = /\bwith\s+[A-Z]/.test(orig);
-    const hasNames = /\b[A-Z][a-z]{2,}\b/.test(orig.replace(/^./, s => s.toLowerCase()));
-    return hasWith || hasNames;
+    const hasWith = /\bwith\s+\w/i.test(orig);
+    // Look for capitalized words that aren't sentence-start
+    const hasNames = /[^.!?]\s+[A-Z][a-z]{2,}/.test(' ' + orig);
+    const startName = /^[A-Z][a-z]{2,}\s/.test(orig);
+    return hasWith || hasNames || startName;
   });
-  if (recent14.length >= 6 && withReferences.length === 0) {
+  if (recent14.length >= 4 && withReferences.length === 0) {
     signals.push({
       id: 'no-names', strength: 60, kind: 'narrowing',
-      title: 'No one else shows up in your recent entries',
-      body: 'Across ' + recent14.length + ' entries, there are no names and no mentions of being with someone. The log is solo. That might be a quiet stretch — or a sign worth noticing.',
+      title: 'No other people show up',
+      body: 'Across ' + recent14.length + ' recent entries, no names, no "with" anyone. The log is solo. Could be a quiet stretch — or a sign worth noticing.',
     });
   }
 
-  // ── Signal 6: Recurring content words (the stuff you keep writing about)
+  // ── Signal 6: Recurring content words (LOOSENED to 2x, surfaces multiple)
   const allWords = recent14.flatMap(e => tokens(allText(e)));
   const wordCount = {};
   allWords.forEach(w => { wordCount[w] = (wordCount[w] || 0) + 1; });
   const topWords = Object.entries(wordCount)
-    .filter(([_, c]) => c >= 3)
+    .filter(([w, c]) => c >= 2 && w.length >= 3)
     .sort((a,b) => b[1] - a[1])
-    .slice(0, 3);
-  if (topWords.length >= 1 && recent14.length >= 6) {
+    .slice(0, 5);
+  if (topWords.length >= 1 && recent14.length >= 4) {
     const [word, count] = topWords[0];
+    const others = topWords.slice(1, 3).map(([w,c]) => '"' + w + '" (' + c + ')').join(', ');
     signals.push({
-      id: 'recurring-word', strength: 45, kind: 'awareness',
-      title: '"' + word + '" keeps coming up',
-      body: 'It appears ' + count + ' times across your recent entries. That kind of repetition is usually telling you something — worth pressing on gently.',
-      evidence: { word, count },
+      id: 'recurring-word', strength: count >= 4 ? 60 : 45, kind: 'awareness',
+      title: '"' + word + '" keeps coming up (' + count + ')',
+      body: others
+        ? 'Also recurring: ' + others + '. Repeated words usually mean something — worth pressing on one of them.'
+        : 'It appears ' + count + ' times across your recent entries. Repetition in words usually signals something the mind is circling.',
+      evidence: { word, count, others: topWords.slice(1, 3) },
     });
   }
 
-  // ── Signal 7: Volume shift week over week
-  if (daysOfHistory >= 10) {
-    if (recent7.length === 0 && prev7.length >= 3) {
+  // ── Signal 7: Volume shift (LOOSENED threshold)
+  if (daysOfHistory >= 7) {
+    if (recent7.length === 0 && prev7.length >= 2) {
       signals.push({
         id: 'dropped-off', strength: 90, kind: 'awareness',
         title: 'You\'ve gone quiet this week',
-        body: 'Zero entries in the last 7 days, after ' + prev7.length + ' the week before. Either life is moving faster than the log can catch, or something has shifted.',
+        body: 'Zero entries this week, after ' + prev7.length + ' last week. Life moving faster than the log can catch — or something has shifted.',
       });
-    } else if (recent7.length >= 3 && prev7.length >= 3) {
+    } else if (recent7.length >= 2 && prev7.length >= 2) {
       const delta = recent7.length - prev7.length;
-      if (Math.abs(delta) >= 4) {
+      if (Math.abs(delta) >= 3) {
         signals.push({
           id: 'volume-shift', strength: 50, kind: 'rhythm',
-          title: delta > 0 ? 'The tempo has picked up' : 'The tempo has slowed',
-          body: delta > 0
-            ? 'You logged ' + recent7.length + ' things this week vs ' + prev7.length + ' last week. Something is picking up momentum — worth naming what.'
-            : 'You logged ' + recent7.length + ' things this week vs ' + prev7.length + ' last week. That kind of slowdown can be rest, or it can be drift — only you know which.',
+          title: delta > 0 ? 'Tempo is picking up' : 'Tempo has slowed',
+          body: 'You logged ' + recent7.length + ' things this week vs ' + prev7.length + ' last week. ' +
+                (delta > 0 ? 'Something has momentum — worth naming what.' : 'Could be rest, could be drift — only you know which.'),
         });
       }
     }
   }
 
-  // ── Signal 8: Healthy variety (positive signal)
+  // ── Signal 8: Broad range (LOOSENED)
   const daysActive = new Set(
     recent14.map(e => startOfDay(e.createdAt).getTime())
   ).size;
-  if (typesUsed >= 4 && daysActive >= 4 && !signals.some(s => s.kind === 'narrowing')) {
+  if (typesUsed >= 3 && daysActive >= 3) {
     signals.push({
-      id: 'broad-range', strength: 40, kind: 'positive',
-      title: 'The map shows real range',
-      body: typesUsed + ' kinds of moments across ' + daysActive + ' different days. There is real texture in what you are building.',
+      id: 'broad-range', strength: 35, kind: 'positive',
+      title: 'The map has real range',
+      body: typesUsed + ' kinds of moments across ' + daysActive + ' different days. There is texture in what you are building.',
     });
   }
 
-  // ── Signal 9: Weekend/weekday split
-  if (recent14.length >= 7) {
+  // ── Signal 9: Weekend drift (LOOSENED)
+  if (recent14.length >= 5) {
     const weekdays = recent14.filter(e => {
       const d = new Date(e.createdAt).getDay();
       return d >= 1 && d <= 5;
     }).length;
     const weekends = recent14.length - weekdays;
-    // Expected ratio is 5:2, so 71% weekday / 29% weekend
     const weekdayPct = weekdays / recent14.length;
-    if (weekdayPct >= 0.92 && weekends <= 1) {
+    if (weekdayPct >= 0.85 && weekends <= 1) {
       signals.push({
         id: 'no-weekend', strength: 55, kind: 'narrowing',
         title: 'Weekends are going unwritten',
-        body: 'Almost all your recent entries are from weekdays. Something about the weekend shape is escaping the log — either it\'s restful enough not to record, or it\'s too empty to.',
+        body: 'Almost all recent entries are from weekdays. The weekend shape is escaping the log — too restful to note, or too empty to?',
       });
     }
   }
 
-  // ── Default fallback if nothing fires
+  // ── Signal 10: Short entries only (NEW) — you're logging but not reflecting
+  if (recent14.length >= 5) {
+    const avgLen = recent14.reduce((sum, e) =>
+      sum + allText(e).length, 0) / recent14.length;
+    if (avgLen < 25) {
+      signals.push({
+        id: 'short-entries', strength: 40, kind: 'awareness',
+        title: 'Entries are staying very brief',
+        body: 'Your recent entries average ' + Math.round(avgLen) + ' characters. That\'s fine for capture, but you may be logging without quite looking. Try one longer entry today.',
+        evidence: { avgLen: Math.round(avgLen) },
+      });
+    } else if (avgLen > 100) {
+      signals.push({
+        id: 'long-entries', strength: 25, kind: 'positive',
+        title: 'You\'re writing real length',
+        body: 'Entries average ' + Math.round(avgLen) + ' characters. You\'re not just tagging — you\'re thinking. Keep going.',
+        evidence: { avgLen: Math.round(avgLen) },
+      });
+    }
+  }
+
+  // ── Signal 11: Context field mostly empty (NEW)
+  if (recent14.length >= 5) {
+    const withContextPossible = recent14.filter(e =>
+      ['meal','workout','place'].includes(e.type));
+    if (withContextPossible.length >= 3) {
+      const filled = withContextPossible.filter(e =>
+        e.context && e.context.trim().length > 0).length;
+      const pct = filled / withContextPossible.length;
+      if (pct < 0.35) {
+        signals.push({
+          id: 'no-context', strength: 35, kind: 'awareness',
+          title: 'You\'re skipping the "why"',
+          body: 'Most entries have only the bare what, not the where, how, or with whom. That context is what turns a log into a map.',
+        });
+      }
+    }
+  }
+
+  // ── Signal 12: Logging streak (NEW) — positive
+  if (daysOfHistory >= 2) {
+    // Count consecutive days ending today/yesterday
+    const dayStrings = new Set(entries.map(e => startOfDay(e.createdAt).toDateString()));
+    let consec = 0;
+    const cursor = startOfDay(now);
+    for (let i = 0; i < 30; i++) {
+      const key = cursor.toDateString();
+      if (dayStrings.has(key)) { consec++; cursor.setDate(cursor.getDate() - 1); }
+      else if (i === 0) { cursor.setDate(cursor.getDate() - 1); } // allow today off
+      else break;
+    }
+    if (consec >= 3) {
+      signals.push({
+        id: 'streak-days', strength: 30, kind: 'positive',
+        title: 'Logged ' + consec + ' days in a row',
+        body: 'Consistency is rare. This kind of streak is how the pattern data starts getting sharp.',
+        evidence: { consec },
+      });
+    }
+  }
+
+  // ── Default fallback
   if (signals.length === 0) {
     signals.push({
       id: 'shape-forming', strength: 20, kind: 'neutral',
       title: 'A shape is forming',
-      body: 'The pattern is still settling. Atlas is beginning to see how your days lay out, but nothing is loud enough yet to call.',
+      body: 'The pattern is still settling. Nothing loud enough to call yet — which is its own kind of reading.',
     });
   }
 
@@ -599,6 +688,31 @@ function getSuggestion(entries, insight) {
       category: 'Observe', title: 'Watch what starts repeating',
       body: 'Nothing strong is calling yet. Over the next few days, notice which moments feel automatic — those are the ones worth logging.',
       footer: 'Awareness comes before intervention.',
+    },
+    'unused-types': {
+      category: 'Widen', title: 'Try logging an entry type you\'ve been skipping',
+      body: 'Whole categories of life aren\'t reaching the log yet. Pick one and capture something small today — it changes what Atlas can see.',
+      footer: 'You can\'t map what you never log.',
+    },
+    'short-entries': {
+      category: 'Deepen', title: 'Write one longer entry today',
+      body: 'Capture is fast, reflection is slower. Pick one moment and write a few sentences about why it actually mattered.',
+      footer: 'A log is only as deep as what you let yourself say.',
+    },
+    'long-entries': {
+      category: 'Continue', title: 'Keep writing what\'s real',
+      body: 'You\'re not just tagging — you\'re thinking on the page. That\'s where the value comes from. Keep going.',
+      footer: 'Depth compounds.',
+    },
+    'no-context': {
+      category: 'Deepen', title: 'Fill the "where / why" field once today',
+      body: 'The context field is where the meaning lives. One entry with it filled in is worth three without.',
+      footer: 'The what is data. The why is understanding.',
+    },
+    'streak-days': {
+      category: 'Continue', title: 'Keep the streak alive',
+      body: 'Log something today — even one small thing. The pattern engine gets sharper with every consecutive day.',
+      footer: 'Consistency is how the map gets real.',
     },
   };
 
@@ -845,7 +959,7 @@ function EntryInputScreen({ type, onSave, onBack, initialPhoto }) {
         field.multiline
           ? h('textarea', {
               ref: el => { fieldRefs.current[field.key] = el; },
-              className: 'a-textarea', rows: 5,
+              className: 'a-textarea', rows: field.rows || 5,
               placeholder: field.placeholder, value: vals[field.key],
               onFocus: () => setActiveField(field.key),
               onChange: e => setVals(v => ({ ...v, [field.key]: e.target.value })) })
@@ -1021,7 +1135,7 @@ function TypePicker({ onSelect, onClose }) {
 }
 
 /* ── Home Screen ── */
-function HomeScreen({ entries, summary, patternInsight, suggestion, goToTimeline, openAdd, filterTo }) {
+function HomeScreen({ entries, summary, patternInsight, suggestion, goToTimeline, openAdd, filterTo, allSignals }) {
   const statPills = [
     { type:'note',    glyph:'✦', label:'Notes',     val:summary.note },
     { type:'meal',    glyph:'◈', label:'Meals',     val:summary.meal },
@@ -1124,11 +1238,30 @@ function HomeScreen({ entries, summary, patternInsight, suggestion, goToTimeline
           position:'relative',overflow:'hidden' } },
           h('div', { style:{ position:'absolute',top:-24,right:-24,width:90,height:90,
             background:'radial-gradient(circle,rgba(100,140,220,0.1) 0%,transparent 70%)' } }),
-          h(MonoLabel, { style:{ color:'rgba(100,160,255,0.7)',marginBottom:8 } }, 'Pattern Awareness'),
-          h('div', { style:{ fontFamily:F.serif,fontSize:18,color:C.text,marginBottom:8,lineHeight:1.3 } },
+          h(MonoLabel, { style:{ color:'rgba(100,160,255,0.7)',marginBottom:8 } }, 'What Atlas is noticing'),
+          h('div', { className:'a-wrap', style:{ fontFamily:F.serif,fontSize:18,color:C.text,marginBottom:8,lineHeight:1.3 } },
             patternInsight.title),
-          h('div', { style:{ fontFamily:F.body,fontSize:13,color:C.textMid,lineHeight:1.6 } },
-            patternInsight.body)
+          h('div', { className:'a-wrap', style:{ fontFamily:F.body,fontSize:13,color:C.textMid,lineHeight:1.6 } },
+            patternInsight.body),
+
+          /* Secondary signals */
+          allSignals && allSignals.length > 1 && h('div', {
+            style:{ marginTop:14, paddingTop:14, borderTop:'1px solid rgba(255,255,255,0.06)' } },
+            h(MonoLabel, { style:{ color:'rgba(138,154,184,0.6)', marginBottom:8, fontSize:9 } }, 'Also noticing'),
+            ...allSignals.slice(1, 4).map(s =>
+              h('div', { key: s.id, className:'a-wrap',
+                style:{ fontFamily:F.body, fontSize:12, color:C.textMid,
+                  lineHeight:1.5, marginBottom:6, display:'flex', gap:8 } },
+                h('span', { style:{ color:'rgba(212,175,55,0.5)', flexShrink:0 } }, '·'),
+                h('span', null, s.title)
+              )
+            ),
+            h('button', { onClick: () => filterTo && goToTimeline(),
+              style:{ marginTop:6, background:'none', border:'none',
+                color:'rgba(100,160,255,0.7)', fontFamily:F.body, fontSize:11,
+                cursor:'pointer', padding:0, fontWeight:500 } },
+              'See full reading on Patterns →')
+          )
         )
       ),
 
@@ -1252,7 +1385,8 @@ function TimelineScreen({ entries, onDelete, filter, clearFilter }) {
         return h('div', { key:e.id, className:'a-card a-titem',
           style:{ padding:'14px 16px',borderRadius:12,marginBottom:10,
             background:C.card,border:'1px solid '+C.border,
-            transition:'border-color 0.2s',animationDelay:(i*0.05)+'s' } },
+            transition:'border-color 0.2s',animationDelay:(i*0.05)+'s',
+            overflow:'hidden', wordBreak:'break-word', overflowWrap:'anywhere' } },
           h('div', { style:{ display:'flex',justifyContent:'space-between',
             alignItems:'flex-start',marginBottom: e.body ? 10 : 0 } },
             h('div', { style:{ display:'flex',alignItems:'center',gap:10 } },
@@ -1270,10 +1404,10 @@ function TimelineScreen({ entries, onDelete, filter, clearFilter }) {
                 fmtTime(e.createdAt))
             )
           ),
-          e.body && h('div', { style:{ paddingLeft:44 } },
-            h('div', { style:{ fontFamily:F.body,fontSize:14,color:C.text,lineHeight:1.6,
+          e.body && h('div', { style:{ paddingLeft:44, minWidth:0 } },
+            h('div', { className:'a-wrap', style:{ fontFamily:F.body,fontSize:14,color:C.text,lineHeight:1.6,
               marginBottom: e.context ? 6 : 0 } }, e.body),
-            e.context && h('div', { style:{ fontFamily:F.body,fontSize:12,color:C.textMid,
+            e.context && h('div', { className:'a-wrap', style:{ fontFamily:F.body,fontSize:12,color:C.textMid,
               lineHeight:1.5,fontStyle:'italic' } }, e.context)
           ),
           e.photos && e.photos.length > 0 && h('div', { style:{ paddingLeft:44, marginTop: e.body ? 10 : 0,
@@ -1629,12 +1763,26 @@ function App() {
     return { total:entries.length, ...c };
   }, [entries]);
 
-  const patternInsight = useMemo(() => getPatternInsight(entries), [entries]);
-  const suggestion     = useMemo(() => getSuggestion(entries, patternInsight), [entries, patternInsight]);
+  const { allSignals, patternInsight } = useMemo(() => {
+    if (!entries.length) return {
+      allSignals: [],
+      patternInsight: {
+        id: 'empty',
+        title: 'No pattern charted yet',
+        body: 'Once you begin logging moments, Atlas will start mapping the shape of your days and noticing where paths may be narrowing.',
+        kind: 'empty',
+      },
+    };
+    const { signals } = computeSignals(entries);
+    signals.sort((a, b) => b.strength - a.strength);
+    return { allSignals: signals, patternInsight: signals[0] };
+  }, [entries]);
+
+  const suggestion = useMemo(() => getSuggestion(entries, patternInsight), [entries, patternInsight]);
 
   let screen_el;
   if (screen === 'home') screen_el = h(HomeScreen, {
-    entries, summary, patternInsight, suggestion,
+    entries, summary, patternInsight, suggestion, allSignals,
     goToTimeline: () => goToTimeline(null),
     filterTo: (type) => goToTimeline(type),
     openAdd
